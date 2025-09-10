@@ -19,6 +19,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -28,7 +30,6 @@ void main() async {
   );
   print("🔥 Firebase connected successfully");
 
-  //khoi tao notice
 
   runApp(
     ChangeNotifierProvider(
@@ -114,7 +115,7 @@ class _MainScreenState extends State<MainScreen> {
   bool hasNewNotification = false;
 
   final List<Widget> _screens = [
-    const SendNoticePage(),
+    const NotificationScreen(),
     const SearchPage(),
     const ProfilePage(),
   ];
