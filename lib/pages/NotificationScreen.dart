@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../utils/showToast.dart';
@@ -9,66 +10,49 @@ class NotificationScreen extends StatefulWidget {
   State<NotificationScreen> createState() => _NotificationScreenState();
 }
 
-
 class _NotificationScreenState extends State<NotificationScreen> {
-  List<Map<String, dynamic>> notifications = [];
-  bool isLoading = true;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
   String filter = 'All';
 
-  // 🔹 Mock data
-  final List<Map<String, dynamic>> mockData = [
-    {
-      "id": 1,
-      "title": "Cuộc hẹn mới",
-      "message": "Bác sĩ A vừa xác nhận cuộc hẹn của bạn",
-      "datetime": "2025-09-10T08:30:00",
-      "isRead": false
-    },
-    {
-      "id": 2,
-      "title": "Đánh giá thành công",
-      "message": "Bạn đã gửi đánh giá cho bác sĩ B",
-      "datetime": "2025-09-09T15:45:00",
-      "isRead": true
-    },
-    {
-      "id": 3,
-      "title": "Thông báo hệ thống",
-      "message": "Ứng dụng sẽ bảo trì vào ngày mai",
-      "datetime": "2025-09-08T12:00:00",
-      "isRead": false
-    },
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    fetchNotifications();
+  /// 🔹 Lưu notification vào Firestore
+  Future<void> saveNotificationToFirestore(Map<String, dynamic> noti) async {
+    try {
+      await firestore.collection("notifications").add({
+        "title": noti["title"],
+        "message": noti["message"],
+        "datetime": noti["datetime"] ?? DateTime.now().toIso8601String(),
+        "isRead": noti["isRead"] ?? false,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+      showToast("✅ Notification saved to Firestore", "success");
+    } catch (e) {
+      showToast("❌ Lỗi khi lưu Firestore: $e", "error");
+    }
   }
 
-  Future<void> fetchNotifications() async {
-    setState(() => isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 500)); // giả lập API
-    setState(() {
-      notifications = mockData;
-      isLoading = false;
-    });
+  /// 🔹 Đánh dấu đã đọc
+  Future<void> markAsRead(String id) async {
+    try {
+      await firestore.collection("notifications").doc(id).update({
+        "isRead": true,
+      });
+    } catch (e) {
+      showToast("❌ Lỗi khi cập nhật Firestore: $e", "error");
+    }
   }
 
-  Future<void> markAsRead(Map<String, dynamic> noti) async {
-    setState(() {
-      noti['isRead'] = true;
-    });
+  /// 🔹 Xóa thông báo
+  Future<void> deleteNotification(String id) async {
+    try {
+      await firestore.collection("notifications").doc(id).delete();
+      showToast("✅ Notification deleted", "success");
+    } catch (e) {
+      showToast("❌ Lỗi khi xóa Firestore: $e", "error");
+    }
   }
 
-  Future<void> deleteNotification(int id) async {
-    setState(() {
-      notifications.removeWhere((n) => n['id'] == id);
-    });
-    showToast("Notification deleted", "success");
-  }
-
-  Future<void> showNotificationDetail(Map<String, dynamic> noti) {
+  /// 🔹 Hiển thị chi tiết thông báo
+  Future<void> showNotificationDetail(Map<String, dynamic> noti, String id) {
     final theme = Theme.of(context);
     return showDialog(
       context: context,
@@ -83,7 +67,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceVariant,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Row(
                 children: [
@@ -151,8 +136,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   style: OutlinedButton.styleFrom(
                     shape: const StadiumBorder(),
                     side: BorderSide(color: theme.colorScheme.outline),
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 10),
                   ),
                   child: Text("Close",
                       style: TextStyle(color: theme.colorScheme.onSurface)),
@@ -169,16 +154,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    List<Map<String, dynamic>> filteredNotifications = filter == 'Unread'
-        ? notifications.where((n) => n['isRead'] != true).toList()
-        : notifications;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Notifications"),
@@ -193,98 +168,151 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         ],
       ),
-      body: filteredNotifications.isEmpty
-          ? const Center(child: Text("No notifications", style: TextStyle(fontSize: 16)))
-          : ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: filteredNotifications.length,
-        itemBuilder: (context, index) {
-          final noti = filteredNotifications[index];
-          bool isRead = noti['isRead'] == true;
 
-          return Dismissible(
-            key: ValueKey(noti['id']),
-            direction: DismissDirection.endToStart,
-            confirmDismiss: (direction) async {
-              return await showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Xác nhận xóa"),
-                  content: const Text("Bạn có chắc chắn muốn xóa thông báo này không?"),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text("Hủy")),
-                    ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text("Xóa")),
-                  ],
+      /// 🔹 Dùng StreamBuilder để hiển thị dữ liệu realtime từ Firestore
+      body: StreamBuilder<QuerySnapshot>(
+        stream: firestore
+            .collection("notifications")
+            .orderBy("createdAt", descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data!.docs;
+
+          // map dữ liệu từ firestore
+          List<Map<String, dynamic>> notis = docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return {
+              "id": doc.id,
+              "title": data["title"],
+              "message": data["message"],
+              "datetime": data["datetime"],
+              "isRead": data["isRead"],
+            };
+          }).toList();
+
+          // lọc theo trạng thái
+          if (filter == 'Unread') {
+            notis = notis.where((n) => n['isRead'] != true).toList();
+          }
+
+          if (notis.isEmpty) {
+            return const Center(
+                child: Text("No notifications",
+                    style: TextStyle(fontSize: 16)));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: notis.length,
+            itemBuilder: (context, index) {
+              final noti = notis[index];
+              bool isRead = noti['isRead'] == true;
+
+              return Dismissible(
+                key: ValueKey(noti['id']),
+                direction: DismissDirection.endToStart,
+                confirmDismiss: (direction) async {
+                  return await showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text("Xác nhận xóa"),
+                      content: const Text(
+                          "Bạn có chắc chắn muốn xóa thông báo này không?"),
+                      actions: [
+                        TextButton(
+                            onPressed: () =>
+                                Navigator.of(context).pop(false),
+                            child: const Text("Hủy")),
+                        ElevatedButton(
+                            onPressed: () =>
+                                Navigator.of(context).pop(true),
+                            child: const Text("Xóa")),
+                      ],
+                    ),
+                  );
+                },
+                onDismissed: (_) => deleteNotification(noti['id']),
+                background: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: const Icon(Icons.delete,
+                      color: Colors.white, size: 28),
+                ),
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  color: isRead
+                      ? theme.colorScheme.surfaceVariant
+                      : theme.colorScheme.surface,
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: Icon(
+                      isRead
+                          ? Icons.notifications_none
+                          : Icons.notifications_active,
+                      color: isRead
+                          ? theme.colorScheme.onSurfaceVariant
+                          : theme.colorScheme.error,
+                      size: 32,
+                    ),
+                    title: Text(
+                      noti['title'] ?? '',
+                      style: TextStyle(
+                        fontWeight:
+                        isRead ? FontWeight.normal : FontWeight.bold,
+                        fontSize: 16,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: Text(
+                      noti['message'] ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    trailing: isRead
+                        ? null
+                        : Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    onTap: () {
+                      markAsRead(noti['id']);
+                      showNotificationDetail(noti, noti['id']);
+                    },
+                  ),
                 ),
               );
             },
-            onDismissed: (_) => deleteNotification(noti['id']),
-            background: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.error,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const Icon(Icons.delete, color: Colors.white, size: 28),
-            ),
-            child: Card(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              color: isRead
-                  ? theme.colorScheme.surfaceVariant
-                  : theme.colorScheme.surface,
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: Icon(
-                  isRead
-                      ? Icons.notifications_none
-                      : Icons.notifications_active,
-                  color: isRead
-                      ? theme.colorScheme.onSurfaceVariant
-                      : theme.colorScheme.error,
-                  size: 32,
-                ),
-                title: Text(
-                  noti['title'] ?? '',
-                  style: TextStyle(
-                    fontWeight:
-                    isRead ? FontWeight.normal : FontWeight.bold,
-                    fontSize: 16,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  noti['message'] ?? '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                  TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                trailing: isRead
-                    ? null
-                    : Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.error,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                onTap: () {
-                  markAsRead(noti);
-                  showNotificationDetail(noti);
-                },
-              ),
-            ),
           );
         },
+      ),
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          saveNotificationToFirestore({
+            "title": "Thông báo test",
+            "message": "Đây là thông báo test lúc ${DateTime.now()}",
+            "datetime": DateTime.now().toIso8601String(),
+            "isRead": false,
+          });
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }

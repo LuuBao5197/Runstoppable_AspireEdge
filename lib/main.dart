@@ -196,8 +196,9 @@ class _MainScreenState extends State<MainScreen> {
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
                   NavigationRailDestination(
-                    icon: Icon(Icons.emoji_emotions),
-                    label: Text("Mood"),
+                    icon: Icon(Icons.notifications_active),
+                    label: Text("Notice"),
+
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
@@ -233,8 +234,8 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 10,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_emotions),
-            label: 'Mood',
+            icon: Icon(Icons.notifications_active),
+            label: 'Notice',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
