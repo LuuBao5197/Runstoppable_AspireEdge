@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:trackmentalhealth/main.dart'; // Dùng flutterLocalNotificationsPlugin đã init
 import 'package:intl/intl.dart';
-import '../../utils/showToast.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -12,9 +13,31 @@ class NotificationScreen extends StatefulWidget {
 
 class _NotificationScreenState extends State<NotificationScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  String filter = 'All';
 
-  /// 🔹 Lưu notification vào Firestore
+  String filter = 'All';
+  List<String> oldIds = [];
+
+  Future<void> _showSystemNotification(String title, String message) async {
+    const AndroidNotificationDetails androidDetails =
+    AndroidNotificationDetails(
+      'app_channel_id',
+      'Thông báo',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const NotificationDetails notificationDetails =
+    NotificationDetails(android: androidDetails);
+
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      message,
+      notificationDetails,
+    );
+  }
+
   Future<void> saveNotificationToFirestore(Map<String, dynamic> noti) async {
     try {
       await firestore.collection("notifications").add({
@@ -24,47 +47,41 @@ class _NotificationScreenState extends State<NotificationScreen> {
         "isRead": noti["isRead"] ?? false,
         "createdAt": FieldValue.serverTimestamp(),
       });
-      showToast("✅ Notification saved to Firestore", "success");
     } catch (e) {
-      showToast("❌ Lỗi khi lưu Firestore: $e", "error");
+      debugPrint("❌ Error saving Firestore: $e");
     }
   }
 
-  /// 🔹 Đánh dấu đã đọc
   Future<void> markAsRead(String id) async {
     try {
       await firestore.collection("notifications").doc(id).update({
         "isRead": true,
       });
     } catch (e) {
-      showToast("❌ Lỗi khi cập nhật Firestore: $e", "error");
+      debugPrint("❌ Error update Firestore: $e");
     }
   }
 
-  /// 🔹 Xóa thông báo
   Future<void> deleteNotification(String id) async {
     try {
       await firestore.collection("notifications").doc(id).delete();
-      showToast("✅ Notification deleted", "success");
     } catch (e) {
-      showToast("❌ Lỗi khi xóa Firestore: $e", "error");
+      debugPrint("❌ Error delete Firestore: $e");
     }
   }
 
-  /// 🔹 Hiển thị chi tiết thông báo
-  Future<void> showNotificationDetail(Map<String, dynamic> noti, String id) {
+  Future<void> showNotificationDetail(Map<String, dynamic> noti) {
     final theme = Theme.of(context);
     return showDialog(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        insetPadding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceVariant,
                 borderRadius:
@@ -83,8 +100,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ],
               ),
             ),
-
-            // Body
             Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -125,8 +140,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ],
               ),
             ),
-
-            // Footer
             Padding(
               padding: const EdgeInsets.only(bottom: 14, right: 14),
               child: Align(
@@ -168,8 +181,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         ],
       ),
-
-      /// 🔹 Dùng StreamBuilder để hiển thị dữ liệu realtime từ Firestore
       body: StreamBuilder<QuerySnapshot>(
         stream: firestore
             .collection("notifications")
@@ -181,8 +192,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
           }
 
           final docs = snapshot.data!.docs;
-
-          // map dữ liệu từ firestore
           List<Map<String, dynamic>> notis = docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
             return {
@@ -194,15 +203,24 @@ class _NotificationScreenState extends State<NotificationScreen> {
             };
           }).toList();
 
-          // lọc theo trạng thái
+          // Detect new notification
+          final currentIds = notis.map((n) => n['id'] as String).toList();
+          if (oldIds.isNotEmpty && currentIds.length > oldIds.length) {
+            final newNoti = notis.first;
+            _showSystemNotification(
+              newNoti['title'] ?? "New notification",
+              newNoti['message'] ?? "",
+            );
+          }
+          oldIds = currentIds;
+
           if (filter == 'Unread') {
             notis = notis.where((n) => n['isRead'] != true).toList();
           }
 
           if (notis.isEmpty) {
             return const Center(
-                child: Text("No notifications",
-                    style: TextStyle(fontSize: 16)));
+                child: Text("No notifications", style: TextStyle(fontSize: 16)));
           }
 
           return ListView.builder(
@@ -220,16 +238,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     context: context,
                     builder: (_) => AlertDialog(
                       title: const Text("Xác nhận xóa"),
-                      content: const Text(
-                          "Bạn có chắc chắn muốn xóa thông báo này không?"),
+                      content: const Text("Bạn có chắc chắn muốn xóa không?"),
                       actions: [
                         TextButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(false),
+                            onPressed: () => Navigator.of(context).pop(false),
                             child: const Text("Hủy")),
                         ElevatedButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(true),
+                            onPressed: () => Navigator.of(context).pop(true),
                             child: const Text("Xóa")),
                       ],
                     ),
@@ -243,8 +258,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ),
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: const Icon(Icons.delete,
-                      color: Colors.white, size: 28),
+                  child:
+                  const Icon(Icons.delete, color: Colors.white, size: 28),
                 ),
                 child: Card(
                   shape: RoundedRectangleBorder(
@@ -278,8 +293,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       noti['message'] ?? '',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant),
+                      style:
+                      TextStyle(color: theme.colorScheme.onSurfaceVariant),
                     ),
                     trailing: isRead
                         ? null
@@ -293,7 +308,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     ),
                     onTap: () {
                       markAsRead(noti['id']);
-                      showNotificationDetail(noti, noti['id']);
+                      showNotificationDetail(noti);
                     },
                   ),
                 ),
@@ -302,7 +317,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
           );
         },
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           saveNotificationToFirestore({

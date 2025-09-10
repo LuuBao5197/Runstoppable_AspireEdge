@@ -18,6 +18,11 @@ import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -26,6 +31,32 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   print("🔥 Firebase connected successfully");
+
+  //khoi tao notice
+  // Android init
+  const AndroidInitializationSettings androidInit =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+// iOS init
+  const DarwinInitializationSettings iosInit = DarwinInitializationSettings();
+
+// Combine cả 2
+  const InitializationSettings initSettings =
+  InitializationSettings(
+    android: androidInit,
+    iOS: iosInit,
+    macOS: iosInit,
+  );
+
+// Initialize
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      // Xử lý khi user click vào notification
+      debugPrint("User tapped notification: ${response.payload}");
+    },
+  );
+
 
   runApp(
     ChangeNotifierProvider(
