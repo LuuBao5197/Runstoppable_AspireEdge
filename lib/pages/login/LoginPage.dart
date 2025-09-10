@@ -334,22 +334,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         label: const Text("Sign in with Google"),
                       ),
-                      // const SizedBox(height: 12),
-                      // ElevatedButton.icon(
-                      //   style: ElevatedButton.styleFrom(
-                      //     backgroundColor: Colors.blue[800],
-                      //     foregroundColor: Colors.white,
-                      //     minimumSize: const Size(double.infinity, 50),
-                      //     shape: RoundedRectangleBorder(
-                      //       borderRadius: BorderRadius.circular(8),
-                      //     ),
-                      //   ),
-                      //   onPressed: () {
-                      //     // TODO: login với Facebook
-                      //   },
-                      //   icon: const Icon(Icons.facebook),
-                      //   label: const Text("Sign in with Facebook"),
-                      // ),
                     ],
                   ),
                   if (_error != null)
