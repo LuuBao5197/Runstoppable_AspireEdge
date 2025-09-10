@@ -15,16 +15,19 @@ import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/utils/NotificationListenerWidget.dart';
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
+import 'firebase_options.dart'; // Tạo bằng `flutterfire configure`
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Thêm dòng này để khởi tạo Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   print("🔥 Firebase connected successfully");
+
+  /// 👉 Chỉ gọi khi muốn seed data
+  await seedSampleData();
 
   runApp(
     ChangeNotifierProvider(
@@ -33,7 +36,6 @@ void main() async {
     ),
   );
 
-  // Xin quyền sau khi app đã chạy mới ko bị block UI
   Future.microtask(() async {
     await requestAppPermissions();
   });
@@ -71,22 +73,17 @@ class TrackMentalHealthApp extends StatelessWidget {
         ),
       ),
       home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(), // Lắng nghe sự thay đổi
+        stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
-          // Trong khi chờ kết nối, hiển thị màn hình chờ
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: CircularProgressIndicator()),
             );
           }
-          // Nếu có dữ liệu người dùng (đã đăng nhập)
           if (snapshot.hasData) {
-            return const MainScreen(); // Đi thẳng vào màn hình chính
+            return const MainScreen();
           }
-          // Nếu không có dữ liệu (chưa đăng nhập)
-          return const LoginPage(); // Hiển thị trang đăng nhập
+          return const LoginPage();
         },
       ),
     );
@@ -106,9 +103,6 @@ class _MainScreenState extends State<MainScreen> {
   String? avatarUrl;
   bool _loadingProfile = true;
 
-
-  bool hasNewNotification = false;
-
   final List<Widget> _screens = [
     const NotificationsPage(),
     const SearchPage(),
@@ -120,7 +114,6 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _loadProfile();
   }
-
 
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
@@ -169,78 +162,47 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildNavigation(BuildContext context, bool isDarkMode) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
-
     final backgroundColor = isDarkMode ? Colors.grey.shade900 : Colors.white;
     final selectedColor = Colors.tealAccent;
     final unselectedColor = isDarkMode ? Colors.white70 : Colors.grey;
 
     if (isWideScreen) {
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        width: 80,
-        color: backgroundColor,
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height,
-            ),
-            child: IntrinsicHeight(
-              child: NavigationRail(
-                backgroundColor: Colors.transparent,
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: _onTabTapped,
-                labelType: NavigationRailLabelType.none,
-                selectedIconTheme: IconThemeData(color: selectedColor),
-                unselectedIconTheme: IconThemeData(color: unselectedColor),
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.emoji_emotions),
-                    label: Text("Mood"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
-                    label: Text("Test"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("Diary"),
-                  ),
-                ],
-              ),
-            ),
+      return NavigationRail(
+        backgroundColor: backgroundColor,
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onTabTapped,
+        labelType: NavigationRailLabelType.none,
+        selectedIconTheme: IconThemeData(color: selectedColor),
+        unselectedIconTheme: IconThemeData(color: unselectedColor),
+        destinations: const [
+          NavigationRailDestination(
+            icon: Icon(Icons.emoji_emotions),
+            label: Text("Mood"),
           ),
-        ),
+          NavigationRailDestination(
+            icon: Icon(Icons.quiz),
+            label: Text("Test"),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.mood),
+            label: Text("Diary"),
+          ),
+        ],
       );
     }
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      color: backgroundColor,
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onTabTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        selectedItemColor: selectedColor,
-        unselectedItemColor: unselectedColor,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-        ),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        elevation: 10,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_emotions),
-            label: 'Mood',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'Test',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
-        ],
-      ),
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onTabTapped,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: backgroundColor,
+      selectedItemColor: selectedColor,
+      unselectedItemColor: unselectedColor,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.emoji_emotions), label: 'Mood'),
+        BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
+        BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
+      ],
     );
   }
 
@@ -248,174 +210,137 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
-
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      color: isDarkMode ? Colors.black : Colors.white,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-            child: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 3,
-              shadowColor: Colors.teal.withOpacity(0.3),
-              title: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 400),
-                style: TextStyle(
-                  color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-                child: const Text('Track Mental Health'),
-              ),
-              centerTitle: true,
-              iconTheme: IconThemeData(
-                color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-              ),
-              actions: [
-                Switch(
-                  value: isDarkMode,
-                  onChanged: (value) => themeProvider.toggleTheme(value),
-                  activeColor: Colors.tealAccent,
-                  inactiveThumbColor: Colors.teal[700],
-                ),
-              ],
-            ),
-          ),
-        ),
-        drawer: Drawer(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: const BoxDecoration(color: Colors.teal),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundImage:
-                            (avatarUrl != null && avatarUrl!.isNotEmpty)
-                            ? NetworkImage(avatarUrl!)
-                            : null,
-                        child: (avatarUrl == null || avatarUrl!.isEmpty)
-                            ? const Icon(
-                                Icons.person,
-                                size: 40,
-                                color: Colors.white,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(height: 8),
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 400),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                        ),
-                        child: Text(
-                          _loadingProfile
-                              ? 'Loading...'
-                              : 'Hello, ${fullname ?? "User"}',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.person,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Profile'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                    if (result == true) _loadProfile();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.settings,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Settings'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings Page chưa được tạo.'),
-                      ),
-                    );
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.logout,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Logout'),
-                  onTap: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
-                    // await FirebaseAuth.instance.signOut();
-                    final googleSignIn = GoogleSignIn();
-                    if (await googleSignIn.isSignedIn())
-                      await googleSignIn.signOut();
-                    if (!mounted) return;
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        body: Row(
+    return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      appBar: AppBar(
+        title: const Text('Track Mental Health'),
+        backgroundColor: isDarkMode ? Colors.grey.shade900 : Colors.white,
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
           children: [
-            if (isWideScreen) _buildNavigation(context, isDarkMode),
-            Expanded(
-              child: Stack(
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.teal),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Màn hình chính
-                  _screens[_selectedIndex],
-
-                  // NotificationListenerWidget (ẩn, chỉ lắng nghe)
-                  FutureBuilder<int?>(
-                    future: SharedPreferences.getInstance().then(
-                      (prefs) => prefs.getInt('userId'),
-                    ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const SizedBox.shrink();
-                      final userId = snapshot.data;
-                      if (userId == null) return const SizedBox.shrink();
-                      return NotificationListenerWidget(userId: userId);
-                    },
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage:
+                    (avatarUrl != null && avatarUrl!.isNotEmpty)
+                        ? NetworkImage(avatarUrl!)
+                        : null,
+                    child: (avatarUrl == null || avatarUrl!.isEmpty)
+                        ? const Icon(Icons.person, size: 40, color: Colors.white)
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _loadingProfile
+                        ? 'Loading...'
+                        : 'Hello, ${fullname ?? "User"}',
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ],
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                final googleSignIn = GoogleSignIn();
+                if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
+                if (!mounted) return;
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              },
+            ),
           ],
         ),
-
-        bottomNavigationBar: isWideScreen
-            ? null
-            : _buildNavigation(context, isDarkMode),
       ),
+      body: Row(
+        children: [
+          if (isWideScreen) _buildNavigation(context, isDarkMode),
+          Expanded(
+            child: Stack(
+              children: [
+                _screens[_selectedIndex],
+                FutureBuilder<int?>(
+                  future: SharedPreferences.getInstance()
+                      .then((prefs) => prefs.getInt('userId')),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const SizedBox.shrink();
+                    final userId = snapshot.data;
+                    if (userId == null) return const SizedBox.shrink();
+                    return NotificationListenerWidget(userId: userId);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar:
+      isWideScreen ? null : _buildNavigation(context, isDarkMode),
     );
   }
+}
+
+/// Hàm seed data Firestore
+Future<void> seedSampleData() async {
+  final db = FirebaseFirestore.instance;
+  print("⏳ Đang thêm seed data...");
+
+  await db.collection("users").doc("user1").set({
+    "name": "Nguyen Van A",
+    "email": "a@example.com",
+    "tier": "student",
+    "created_at": FieldValue.serverTimestamp(),
+  });
+
+  await db.collection("careers").doc("career1").set({
+    "title": "Software Engineer",
+    "industry": "IT",
+    "description": "Phát triển và duy trì phần mềm",
+    "salary_range": "1000-3000 USD",
+    "education_path": "Cử nhân CNTT",
+    "skills": ["Java", "Flutter", "SQL"],
+  });
+
+  await db.collection("resources").doc("res1").set({
+    "title": "Hướng dẫn viết CV",
+    "type": "blog",
+    "description": "Cách viết CV thu hút nhà tuyển dụng",
+    "url": "https://example.com/cv",
+    "created_at": FieldValue.serverTimestamp(),
+  });
+
+  await db.collection("quizzes").doc("quiz1").set({
+    "question_text": "Bạn thích làm việc nhóm hay làm việc độc lập?",
+    "options": {"A": "Làm việc nhóm", "B": "Làm việc độc lập"},
+    "score_map": {"A": 10, "B": 20}
+  });
+
+  await db.collection("notifications").doc("n1").set({
+    "title": "Có blog mới!",
+    "message": "Xem ngay bài viết về viết CV.",
+    "created_at": FieldValue.serverTimestamp(),
+  });
+
+  print("✅ Seed data đã thêm thành công!");
 }

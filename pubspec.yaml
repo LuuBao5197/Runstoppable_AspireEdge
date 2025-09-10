@@ -43,7 +43,8 @@ dependencies:
   intl: ^0.20.2
   zego_express_engine: ^3.20.0
   flutter_html: ^3.0.0
-
+  firebase_in_app_messaging: ^0.8.1+10
+  cloud_firestore: ^5.0.0
 
 dev_dependencies:
   flutter_test:
