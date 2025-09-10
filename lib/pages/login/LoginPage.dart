@@ -1,14 +1,11 @@
-import 'dart:convert';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,23 +22,32 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   String? _error;
 
-  /// Extracts an error message safely from API responses.
-  String _getErrorMessage(http.Response response) {
+
+  Future<void> _testFirebaseConnection() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      final parsed = jsonDecode(response.body);
-      if (parsed is Map<String, dynamic>) {
-        for (final key in ['message', 'error', 'detail', 'msg']) {
-          final value = parsed[key];
-          if (value is String && value.trim().isNotEmpty) return value.trim();
-        }
-      }
-      if (parsed is String && parsed.trim().isNotEmpty) {
-        return parsed.trim();
-      }
-    } catch (_) {
-      // Ignore JSON parsing errors
+      print('🔍 Testing Firebase connection...');
+      
+      // Test Firebase Auth
+      final auth = FirebaseAuth.instance;
+      print('✅ Firebase Auth initialized');
+      
+      // Test Firestore
+      final firestore = FirebaseFirestore.instance;
+      await firestore.collection('test').limit(1).get();
+      print('✅ Firestore connection successful');
+      
+      setState(() => _error = "✅ Firebase connection successful!");
+    } catch (e) {
+      print('❌ Firebase connection test failed: $e');
+      setState(() => _error = "❌ Firebase connection failed: $e");
+    } finally {
+      setState(() => _isLoading = false);
     }
-    return response.body.toString().trim();
   }
 
   Future<void> _signInWithGoogle() async {
@@ -51,9 +57,11 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      print('🔍 Starting Google Sign-in with Firebase...');
+      
       final googleUser = await GoogleSignIn(
         scopes: ['email', 'profile'],
-        serverClientId: "713857311495-mvg33eppl0s6rjiju5chh0rt02ho0ltb.apps.googleusercontent.com",
+        serverClientId: "1035803144115-uvl45dju0rihlspo1js34ls02lkeute8.apps.googleusercontent.com",
       ).signIn();
 
       if (googleUser == null) {
@@ -64,32 +72,39 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
+      print('✅ Google Sign-in successful, getting authentication...');
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
 
       if (idToken == null) {
         setState(() => _error = "Unable to get Google ID Token.");
         return;
       }
 
-      // Gọi backend API thay vì Firebase
-      final response = await http.post(
-        Uri.parse(ApiConstants.loginWithGoogle),
-        body: {'idToken': idToken},
+      // Tạo Firebase credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: accessToken,
+        idToken: idToken,
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final user = data['user'];
+      print('🔐 Signing in to Firebase...');
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final user = userCredential.user;
 
+      if (user != null) {
+        print('✅ Firebase authentication successful!');
+        
+        // Lưu thông tin user vào Firestore
+        await _saveUserToFirestore(user);
+        
+        // Lưu thông tin vào SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        await prefs.setString('token', data['token']);
-        await prefs.setInt('userId', user['id']);
-        await prefs.setString('fullname', user['fullname']);
-        await prefs.setString('avatar', user['avatar'] ?? '');
-        await prefs.setString('role', user['role']);
-        await prefs.setString('email', user['email']);
+        await prefs.setString('uid', user.uid);
+        await prefs.setString('email', user.email ?? '');
+        await prefs.setString('fullname', user.displayName ?? '');
+        await prefs.setString('avatar', user.photoURL ?? '');
+        await prefs.setString('role', 'user');
 
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -97,35 +112,44 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       } else {
-        final msg = _getErrorMessage(response);
-        setState(() => _error = msg);
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        final googleSignIn = GoogleSignIn();
-        if (await googleSignIn.isSignedIn()) {
-          await googleSignIn.signOut();
-        }
+        setState(() => _error = "Firebase authentication failed.");
       }
     } catch (e) {
       print("Google login error: $e");
-      setState(() => _error = "Google login failed. Please try again.");
+      setState(() => _error = "Google login failed: ${e.toString()}");
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  void parseToken(String token) {
-    Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-
-    int userId = decodedToken['userId'];
-    String email = decodedToken['sub'];
-    String role = decodedToken['role'];
-
-    print('User ID: $userId');
-    print('Email: $email');
-    print('Role: $role');
+  Future<void> _saveUserToFirestore(User user) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final userDoc = await firestore.collection('users').doc(user.uid).get();
+      
+      if (!userDoc.exists) {
+        await firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': user.email,
+          'fullname': user.displayName ?? '',
+          'avatar': user.photoURL ?? '',
+          'role': 'user',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
+        print('✅ User data saved to Firestore');
+      } else {
+        // Cập nhật thời gian đăng nhập cuối
+        await firestore.collection('users').doc(user.uid).update({
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
+        print('✅ User login time updated in Firestore');
+      }
+    } catch (e) {
+      print('⚠️ Error saving user to Firestore: $e');
+    }
   }
+
 
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
@@ -142,44 +166,28 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse(ApiConstants.login),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+      print('🔍 Attempting Firebase login with email: $email');
+      
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-      print('Login API raw response: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final token = data['token'] as String;
-
-        final decodedToken = JwtDecoder.decode(token);
-        final userId = decodedToken['userId'];
-        final emailFromToken = decodedToken['sub'];
-        final role = decodedToken['role'];
-
+      
+      final user = userCredential.user;
+      
+      if (user != null) {
+        print('✅ Firebase login successful! UID: ${user.uid}');
+        
+        // Lưu thông tin user vào Firestore
+        await _saveUserToFirestore(user);
+        
+        // Lưu thông tin vào SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await prefs.setInt('userId', userId);
-        await prefs.setString('email', emailFromToken);
-        await prefs.setString('role', role);
-
-        // Fetch user profile
-        final profileResponse = await http.get(
-          Uri.parse("${ApiConstants.baseUrl}/users/profile/$userId"),
-          headers: {"Authorization": "Bearer $token"},
-        );
-
-        if (profileResponse.statusCode == 200) {
-          final profileData = jsonDecode(profileResponse.body);
-
-          if (profileData['fullname'] != null) {
-            await prefs.setString('fullname', profileData['fullname']);
-          }
-          if (profileData['avatar'] != null) {
-            await prefs.setString('avatar', profileData['avatar']);
-          }
-        }
+        await prefs.setString('uid', user.uid);
+        await prefs.setString('email', user.email ?? '');
+        await prefs.setString('fullname', user.displayName ?? '');
+        await prefs.setString('avatar', user.photoURL ?? '');
+        await prefs.setString('role', 'user');
 
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -187,12 +195,36 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       } else {
-        final msg = _getErrorMessage(response);
-        setState(() => _error = msg);
+        setState(() => _error = "Login failed. Please try again.");
       }
+    } on FirebaseAuthException catch (e) {
+      print('❌ Firebase Auth error: ${e.code} - ${e.message}');
+      String errorMessage = "Login failed. Please try again.";
+      
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = "No user found with this email address.";
+          break;
+        case 'wrong-password':
+          errorMessage = "Wrong password provided.";
+          break;
+        case 'invalid-email':
+          errorMessage = "Invalid email address.";
+          break;
+        case 'user-disabled':
+          errorMessage = "This user account has been disabled.";
+          break;
+        case 'too-many-requests':
+          errorMessage = "Too many failed login attempts. Please try again later.";
+          break;
+        default:
+          errorMessage = "Login failed: ${e.message}";
+      }
+      
+      setState(() => _error = errorMessage);
     } catch (e) {
-      print('Login error: $e');
-      setState(() => _error = "Unable to connect to server. Please try again.");
+      print('❌ Login error: $e');
+      setState(() => _error = "An unexpected error occurred. Please try again.");
     } finally {
       setState(() => _isLoading = false);
     }
@@ -276,6 +308,19 @@ class _LoginPageState extends State<LoginPage> {
                           height: 24,
                         ),
                         label: const Text("Sign in with Google"),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: _testFirebaseConnection,
+                        child: const Text("Test Firebase Connection"),
                       ),
                       // const SizedBox(height: 12),
                       // ElevatedButton.icon(
