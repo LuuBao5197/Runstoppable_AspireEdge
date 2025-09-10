@@ -5,7 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/pages/NotificationPage.dart';
+import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -111,7 +111,7 @@ class _MainScreenState extends State<MainScreen> {
   bool hasNewNotification = false;
 
   final List<Widget> _screens = [
-    const NotificationsPage(),
+    const NotificationScreen(),
     const SearchPage(),
     const ProfilePage(),
   ];
@@ -196,8 +196,9 @@ class _MainScreenState extends State<MainScreen> {
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
                   NavigationRailDestination(
-                    icon: Icon(Icons.emoji_emotions),
-                    label: Text("Mood"),
+                    icon: Icon(Icons.notifications_active),
+                    label: Text("Notice"),
+
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
@@ -233,8 +234,8 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 10,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_emotions),
-            label: 'Mood',
+            icon: Icon(Icons.notifications_active),
+            label: 'Notice',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
@@ -370,10 +371,12 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   title: const Text('Logout'),
                   onTap: () async {
-                    await AuthServices().logout();
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.clear();
-
+                    // await FirebaseAuth.instance.signOut();
+                    final googleSignIn = GoogleSignIn();
+                    if (await googleSignIn.isSignedIn())
+                      await googleSignIn.signOut();
                     if (!mounted) return;
                     Navigator.pushReplacement(
                       context,
