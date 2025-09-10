@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/main.dart';
-import 'package:trackmentalhealth/models/User.dart' as model;
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
