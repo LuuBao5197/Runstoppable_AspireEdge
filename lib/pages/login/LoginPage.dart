@@ -9,6 +9,7 @@ import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:trackmentalhealth/pages/login/google_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -20,10 +21,64 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authService = FirebaseServices();
 
   bool _isObscure = true;
   bool _isLoading = false;
   String? _error;
+
+  Future<void> _handleEmailLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await _authService.signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (user != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('uid', user.uid);
+        await prefs.setString('email', user.email ?? '');
+        await prefs.setString('name', user.displayName ?? '');
+        await prefs.setString('photoUrl', user.photoURL ?? '');
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Login failed: $e")));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await _authService.signInWithGoogle();
+
+      if (user != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('uid', user.uid);
+        await prefs.setString('email', user.email ?? '');
+        await prefs.setString('name', user.displayName ?? '');
+        await prefs.setString('photoUrl', user.photoURL ?? '');
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Google login failed: $e")));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   /// Extracts an error message safely from API responses.
   String _getErrorMessage(http.Response response) {
@@ -270,7 +325,7 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        onPressed: _signInWithGoogle,
+                        onPressed: _handleGoogleLogin,
                         icon: Image.asset(
                           'assets/images/google_logo.png',
                           height: 24,
@@ -291,16 +346,16 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
+                      onPressed: _isLoading ? null : _handleEmailLogin,
                       child: _isLoading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                           : const Text('Login'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
