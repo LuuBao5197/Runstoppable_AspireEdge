@@ -9,7 +9,6 @@ import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:trackmentalhealth/pages/login/google_auth.dart';
 
 class LoginPage extends StatefulWidget {
@@ -350,13 +349,13 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _isLoading ? null : _handleEmailLogin,
                       child: _isLoading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                           : const Text('Login'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
