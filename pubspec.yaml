@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  cloud_firestore: ^5.5.0
+  googleapis_auth: ^2.0.0
   image_picker: ^1.1.2
   http: ^1.4.0
   flutter_spinkit: ^5.2.2
