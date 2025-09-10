@@ -31,8 +31,10 @@ class AuthServices {
       } else {
         res = 'Lỗi: ${e.message}';
       }
-    } catch (e) {
-      res = 'Lỗi không xác định';
+    } catch (e, stack) {
+      print("SignUp Error: $e");
+      print(stack);
+      res = 'Lỗi không xác định: $e';
     }
     return res;
   }

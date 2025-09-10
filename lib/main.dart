@@ -5,13 +5,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/pages/NotificationPage.dart';
+import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
 import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
-import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/utils/NotificationListenerWidget.dart';
@@ -19,7 +18,7 @@ import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -113,7 +112,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  String? fullname;
+  String? name;
   String? avatarUrl;
   bool _loadingProfile = true;
 
@@ -121,7 +120,7 @@ class _MainScreenState extends State<MainScreen> {
   bool hasNewNotification = false;
 
   final List<Widget> _screens = [
-    const NotificationsPage(),
+    const NotificationScreen(),
     const SearchPage(),
     const ProfilePage(),
   ];
@@ -135,39 +134,40 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final userId = prefs.getInt('userId');
 
-      if (userId == null || token == null) {
+    try {
+      // Lấy user hiện tại từ FirebaseAuth
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
         setState(() => _loadingProfile = false);
         return;
       }
 
-      final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      // Truy vấn Firestore theo uid
+      final doc = await FirebaseFirestore.instance
+          .collection('account')
+          .doc(user.uid)
+          .get();
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        String? avatar = data['avatar'];
-        if (avatar != null && !avatar.startsWith('http')) {
-          avatar = '${ApiConstants.baseUrl}/uploads/$avatar';
+      if (doc.exists) {
+        final data = doc.data()!;
+
+        String? avatar = data['image'];
+        if (avatar != null && avatar.isNotEmpty && !avatar.startsWith('http')) {
+          // Nếu bạn lưu relative path, có thể cần nối thêm storage bucket URL
+          avatar = "https://firebasestorage.googleapis.com/v0/b/<aspire-edge-app>.appspot.com/o/$avatar?alt=media";
         }
 
         setState(() {
-          fullname = data['fullname'] ?? "User";
+          name = data['name'] ?? "User";
           avatarUrl = avatar;
           _loadingProfile = false;
         });
-
-        if (avatarUrl != null) await prefs.setString('avatarUrl', avatarUrl!);
       } else {
         setState(() => _loadingProfile = false);
       }
-    } catch (_) {
+    } catch (e) {
+      print("Load profile error: $e");
       setState(() => _loadingProfile = false);
     }
   }
@@ -205,8 +205,9 @@ class _MainScreenState extends State<MainScreen> {
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
                   NavigationRailDestination(
-                    icon: Icon(Icons.emoji_emotions),
-                    label: Text("Mood"),
+                    icon: Icon(Icons.notifications_active),
+                    label: Text("Notice"),
+
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
@@ -242,8 +243,8 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 10,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_emotions),
-            label: 'Mood',
+            icon: Icon(Icons.notifications_active),
+            label: 'Notice',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
@@ -336,7 +337,7 @@ class _MainScreenState extends State<MainScreen> {
                         child: Text(
                           _loadingProfile
                               ? 'Loading...'
-                              : 'Hello, ${fullname ?? "User"}',
+                              : 'Hello, ${name ?? "User"}',
                         ),
                       ),
                     ],
@@ -379,10 +380,12 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   title: const Text('Logout'),
                   onTap: () async {
-                    await AuthServices().logout();
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.clear();
-
+                    // await FirebaseAuth.instance.signOut();
+                    final googleSignIn = GoogleSignIn();
+                    if (await googleSignIn.isSignedIn())
+                      await googleSignIn.signOut();
                     if (!mounted) return;
                     Navigator.pushReplacement(
                       context,
