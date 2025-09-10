@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/ResourceScreen.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
@@ -14,11 +15,13 @@ import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
-import 'package:trackmentalhealth/utils/NotificationListenerWidget.dart';
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -27,6 +30,9 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   print("🔥 Firebase connected successfully");
+
+  //khoi tao notice
+  // Android init
 
   runApp(
     ChangeNotifierProvider(
@@ -402,19 +408,6 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   // Màn hình chính
                   _screens[_selectedIndex],
-
-                  // NotificationListenerWidget (ẩn, chỉ lắng nghe)
-                  FutureBuilder<int?>(
-                    future: SharedPreferences.getInstance().then(
-                      (prefs) => prefs.getInt('userId'),
-                    ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const SizedBox.shrink();
-                      final userId = snapshot.data;
-                      if (userId == null) return const SizedBox.shrink();
-                      return NotificationListenerWidget(userId: userId);
-                    },
-                  ),
                 ],
               ),
             ),

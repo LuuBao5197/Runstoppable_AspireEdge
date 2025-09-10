@@ -1,10 +1,12 @@
+import 'dart:io';
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import '../../utils/showToast.dart';
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class ResourceScreen extends StatefulWidget {
   const ResourceScreen({super.key});
@@ -15,428 +17,339 @@ class ResourceScreen extends StatefulWidget {
 
 class _ResourceScreenState extends State<ResourceScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  String filter = 'All'; // All, Blog, Ebook, Video, Image
 
-  /// 🔹 Lưu resource vào Firestore
-  Future<void> saveResourceToFirestore(Map<String, dynamic> resource) async {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+
+  String? uploadedUrl;
+  String selectedType = "Blog";
+  bool isUploading = false;
+
+  String searchQuery = "";
+
+  // ✅ Upload file to backend Cloudinary
+  Future<void> pickAndUploadFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      if (result != null && result.files.single.path != null) {
+        File file = File(result.files.single.path!);
+
+        setState(() => isUploading = true);
+
+        var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('http://10.0.2.2:9999/api/upload'), // backend Cloudinary
+        );
+        request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+        var response = await request.send();
+
+        if (response.statusCode == 200) {
+          final resString = await response.stream.bytesToString();
+          final resJson = jsonDecode(resString);
+
+          setState(() {
+            uploadedUrl = resJson['url'];
+            isUploading = false;
+          });
+
+          showToast("✅ File uploaded successfully", "success");
+        } else {
+          setState(() => isUploading = false);
+          showToast("❌ Upload failed: ${response.statusCode}", "error");
+        }
+      }
+    } catch (e) {
+      setState(() => isUploading = false);
+      showToast("❌ Upload error: $e", "error");
+    }
+  }
+
+  // ✅ Save metadata to Firestore
+  Future<void> saveResourceToFirestore() async {
+    if (_titleController.text.trim().isEmpty ||
+        _descController.text.trim().isEmpty ||
+        uploadedUrl == null) {
+      showToast("⚠️ Please fill all fields and upload a file", "warning");
+      return;
+    }
+
     try {
       await firestore.collection("resources").add({
-        "title": resource["title"],
-        "description": resource["description"],
-        "type": resource["type"],
-        "url": resource["url"] ?? "",
-        "tags": resource["tags"] ?? [],
-        "isFavorite": resource["isFavorite"] ?? false,
+        "title": _titleController.text.trim(),
+        "description": _descController.text.trim(),
+        "type": selectedType,
+        "url": uploadedUrl ?? "",
+        "tags": [],
+        "isFavorite": false,
         "createdAt": FieldValue.serverTimestamp(),
       });
-      showToast("✅ Resource saved to Firestore", "success");
-    } catch (e) {
-      showToast("❌ Lỗi khi lưu Firestore: $e", "error");
-    }
-  }
 
-  /// 🔹 Toggle favorite
-  Future<void> toggleFavorite(String id, bool current) async {
-    try {
-      await firestore.collection("resources").doc(id).update({
-        "isFavorite": !current,
+      showToast("✅ Resource saved successfully", "success");
+
+      _titleController.clear();
+      _descController.clear();
+      setState(() {
+        uploadedUrl = null;
+        selectedType = "Blog";
       });
     } catch (e) {
-      showToast("❌ Lỗi khi cập nhật Firestore: $e", "error");
+      showToast("❌ Error saving resource: $e", "error");
     }
   }
 
-  /// 🔹 Xóa resource
-  Future<void> deleteResource(String id) async {
-    try {
-      await firestore.collection("resources").doc(id).delete();
-      showToast("✅ Resource deleted", "success");
-    } catch (e) {
-      showToast("❌ Lỗi khi xóa Firestore: $e", "error");
-    }
-  }
-
-  /// 🔹 Hiển thị chi tiết resource
-  Future<void> showResourceDetail(Map<String, dynamic> res, String id) {
-    final theme = Theme.of(context);
-    return showDialog(
+  // ✅ Dialog thêm resource với preview ảnh
+  void showAddResourceDialog() {
+    showDialog(
       context: context,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant,
-                borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.library_books,
-                      color: theme.colorScheme.primary, size: 22),
-                  const SizedBox(width: 8),
-                  Text("Resource Details",
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary)),
-                ],
-              ),
-            ),
-
-            // Body
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (res['createdAt'] != null)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        DateFormat("HH:mm - dd/MM/yyyy").format(
-                            (res['createdAt'] as Timestamp?)?.toDate() ??
-                                DateTime.now()),
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 12,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              title: const Text("Add Resource"),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(labelText: "Title"),
+                    ),
+                    TextField(
+                      controller: _descController,
+                      decoration: const InputDecoration(labelText: "Description"),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: isUploading
+                          ? null
+                          : () async {
+                        await pickAndUploadFile();
+                        setDialogState(() {}); // update dialog
+                      },
+                      icon: const Icon(Icons.attach_file),
+                      label: Text(isUploading
+                          ? "Uploading..."
+                          : (uploadedUrl != null
+                          ? "File Selected"
+                          : "Select File")),
+                    ),
+                    const SizedBox(height: 10),
+                    if (uploadedUrl != null &&
+                        (uploadedUrl!.endsWith(".jpg") ||
+                            uploadedUrl!.endsWith(".png") ||
+                            uploadedUrl!.endsWith(".jpeg") ||
+                            uploadedUrl!.contains("image")))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Image.network(
+                          uploadedUrl!,
+                          height: 150,
+                          fit: BoxFit.cover,
                         ),
                       ),
+                    const SizedBox(height: 10),
+                    DropdownButton<String>(
+                      value: selectedType,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedType = value!;
+                        });
+                      },
+                      items: ["Blog", "Video", "Ebook"]
+                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                          .toList(),
                     ),
-                  const SizedBox(height: 10),
-                  Text(res['title'] ?? '',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                          color: theme.colorScheme.onSurface)),
-                  const SizedBox(height: 10),
-                  Text("Type: ${res['type'] ?? ''}",
-                      style: TextStyle(
-                          fontSize: 14,
-                          color: theme.colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(res['description'] ?? '',
-                        style: TextStyle(
-                            fontSize: 15,
-                            height: 1.6,
-                            color: theme.colorScheme.onSurface)),
-                  ),
-                ],
-              ),
-            ),
-
-            // Footer
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14, right: 14),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    shape: const StadiumBorder(),
-                    side: BorderSide(color: theme.colorScheme.outline),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 10),
-                  ),
-                  child: Text("Close",
-                      style: TextStyle(color: theme.colorScheme.onSurface)),
+                  ],
                 ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    saveResourceToFirestore();
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ✅ Dialog xem chi tiết resource
+  void showResourceDetailDialog(Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Text(data["title"] ?? "No title"),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (data["url"] != null && data["url"] != "")
+                  (data["url"].endsWith(".jpg") ||
+                      data["url"].endsWith(".png") ||
+                      data["url"].endsWith(".jpeg") ||
+                      data["url"].contains("image"))
+                      ? Image.network(
+                    data["url"],
+                    height: 200,
+                    fit: BoxFit.cover,
+                  )
+                      : Text("File: ${data["url"].split('/').last}"),
+                const SizedBox(height: 10),
+                Text("Description: ${data["description"] ?? ""}"),
+                const SizedBox(height: 5),
+                Text("Type: ${data["type"] ?? ""}"),
+                const SizedBox(height: 5),
+                Text(
+                    "Created At: ${DateFormat("dd/MM/yyyy HH:mm").format((data["createdAt"] as Timestamp?)?.toDate() ?? DateTime.now())}"),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ✅ Toggle favorite
+  Future<void> toggleFavorite(String docId, bool current) async {
+    try {
+      await firestore.collection("resources").doc(docId).update({
+        "isFavorite": !current,
+      });
+      showToast(current ? "Removed from favorites" : "Added to favorites", "success");
+    } catch (e) {
+      showToast("❌ Error updating favorite: $e", "error");
+    }
+  }
+
+  // ✅ Build resource card với thumbnail và favorite
+  Widget buildResourceCard(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      child: ListTile(
+        leading: (data["url"] != null &&
+            (data["url"].endsWith(".jpg") ||
+                data["url"].endsWith(".png") ||
+                data["url"].endsWith(".jpeg") ||
+                data["url"].contains("image")))
+            ? Image.network(
+          data["url"],
+          width: 50,
+          height: 50,
+          fit: BoxFit.cover,
+        )
+            : const Icon(Icons.folder),
+        title: Text(data["title"] ?? "No title"),
+        subtitle: Text(data["description"] ?? ""),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(
+                data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
+                color: Colors.red,
+              ),
+              onPressed: () => toggleFavorite(doc.id, data["isFavorite"] == true),
+            ),
+            Text(
+              DateFormat("dd/MM/yyyy").format(
+                (data["createdAt"] as Timestamp?)?.toDate() ?? DateTime.now(),
               ),
             ),
           ],
         ),
+        onTap: () => showResourceDetailDialog(data),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Resource Center"),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) => setState(() => filter = value),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'All', child: Text('All')),
-              PopupMenuItem(value: 'Blog', child: Text('Blog')),
-              PopupMenuItem(value: 'Ebook', child: Text('Ebook')),
-              PopupMenuItem(value: 'Video', child: Text('Video')),
-              PopupMenuItem(value: 'Image', child: Text('Image')),
-            ],
+      ),
+      body: Column(
+        children: [
+          // Search field
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: "Search resources...",
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: firestore
+                  .collection("resources")
+                  .orderBy("createdAt", descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(child: Text("Error loading resources"));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = snapshot.data?.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final title = (data["title"] ?? "").toString().toLowerCase();
+                  final desc =
+                  (data["description"] ?? "").toString().toLowerCase();
+                  return title.contains(searchQuery) ||
+                      desc.contains(searchQuery);
+                }).toList() ??
+                    [];
+
+                if (docs.isEmpty) {
+                  return const Center(child: Text("No resources found"));
+                }
+
+                return ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) => buildResourceCard(docs[index]),
+                );
+              },
+            ),
           ),
         ],
       ),
-
-      /// 🔹 StreamBuilder realtime
-      body: StreamBuilder<QuerySnapshot>(
-        stream: firestore
-            .collection("resources")
-            .orderBy("createdAt", descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final docs = snapshot.data!.docs;
-
-          List<Map<String, dynamic>> resources = docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            return {
-              "id": doc.id,
-              "title": data["title"],
-              "description": data["description"],
-              "type": data["type"],
-              "url": data["url"],
-              "tags": data["tags"],
-              "isFavorite": data["isFavorite"] ?? false,
-              "createdAt": data["createdAt"],
-            };
-          }).toList();
-
-          // lọc
-          if (filter != 'All') {
-            resources =
-                resources.where((r) => r['type'] == filter).toList();
-          }
-
-          if (resources.isEmpty) {
-            return const Center(
-                child: Text("No resources found",
-                    style: TextStyle(fontSize: 16)));
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: resources.length,
-            itemBuilder: (context, index) {
-              final res = resources[index];
-              final bool isFav = res['isFavorite'] == true;
-
-              return Dismissible(
-                key: ValueKey(res['id']),
-                direction: DismissDirection.endToStart,
-                confirmDismiss: (direction) async {
-                  return await showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text("Confirm delete"),
-                      content: const Text(
-                          "Are you sure you want to delete this resource?"),
-                      actions: [
-                        TextButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(false),
-                            child: const Text("Cancel")),
-                        ElevatedButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(true),
-                            child: const Text("Delete")),
-                      ],
-                    ),
-                  );
-                },
-                onDismissed: (_) => deleteResource(res['id']),
-                background: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.error,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: const Icon(Icons.delete,
-                      color: Colors.white, size: 28),
-                ),
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: Icon(
-                      res['type'] == "Blog"
-                          ? Icons.article
-                          : res['type'] == "Ebook"
-                          ? Icons.book
-                          : res['type'] == "Video"
-                          ? Icons.video_library
-                          : Icons.image,
-                      color: theme.colorScheme.primary,
-                      size: 32,
-                    ),
-                    title: Text(
-                      res['title'] ?? '',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    subtitle: Text(
-                      res['description'] ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    trailing: IconButton(
-                      icon: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                          color: isFav
-                              ? theme.colorScheme.error
-                              : theme.colorScheme.onSurfaceVariant),
-                      onPressed: () =>
-                          toggleFavorite(res['id'], isFav),
-                    ),
-                    onTap: () => showResourceDetail(res, res['id']),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (_) {
-              final _titleController = TextEditingController();
-              final _descController = TextEditingController();
-              String selectedType = 'Blog';
-              String? uploadedUrl;
-              bool isUploading = false;
-
-              return StatefulBuilder(
-                builder: (context, setState) {
-                  Future<void> pickAndUploadFile() async {
-                    try {
-                      FilePickerResult? result = await FilePicker.platform.pickFiles();
-                      if (result != null && result.files.single.path != null) {
-                        File file = File(result.files.single.path!);
-
-                        setState(() => isUploading = true);
-
-                        final storageRef = FirebaseStorage.instance
-                            .ref()
-                            .child("resources/${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}");
-
-                        await storageRef.putFile(file);
-                        final url = await storageRef.getDownloadURL();
-
-                        setState(() {
-                          uploadedUrl = url;
-                          isUploading = false;
-                        });
-
-                        showToast("✅ File uploaded successfully", "success");
-                      }
-                    } catch (e) {
-                      setState(() => isUploading = false);
-                      showToast("❌ Upload error: $e", "error");
-                    }
-                  }
-
-                  return AlertDialog(
-                    title: const Text("Add Resource"),
-                    content: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextField(
-                            controller: _titleController,
-                            decoration: const InputDecoration(labelText: "Title"),
-                          ),
-                          TextField(
-                            controller: _descController,
-                            decoration: const InputDecoration(labelText: "Description"),
-                            maxLines: 3,
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Button chọn file
-                          Row(
-                            children: [
-                              ElevatedButton.icon(
-                                onPressed: pickAndUploadFile,
-                                icon: const Icon(Icons.attach_file),
-                                label: const Text("Select File"),
-                              ),
-                              const SizedBox(width: 10),
-                              if (isUploading)
-                                const CircularProgressIndicator()
-                              else if (uploadedUrl != null)
-                                const Icon(Icons.check_circle, color: Colors.green),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-                          DropdownButtonFormField<String>(
-                            value: selectedType,
-                            items: const [
-                              DropdownMenuItem(value: "Blog", child: Text("Blog")),
-                              DropdownMenuItem(value: "Ebook", child: Text("Ebook")),
-                              DropdownMenuItem(value: "Video", child: Text("Video")),
-                              DropdownMenuItem(value: "Image", child: Text("Image")),
-                            ],
-                            onChanged: (val) => selectedType = val!,
-                            decoration: const InputDecoration(labelText: "Type"),
-                          ),
-                        ],
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Cancel"),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          if (_titleController.text.isEmpty ||
-                              _descController.text.isEmpty ||
-                              uploadedUrl == null) {
-                            showToast("❌ Please fill in all required fields", "error");
-                            return;
-                          }
-
-                          saveResourceToFirestore({
-                            "title": _titleController.text.trim(),
-                            "description": _descController.text.trim(),
-                            "type": selectedType,
-                            "url": uploadedUrl, // link file trên Firebase Storage
-                            "tags": [],
-                            "isFavorite": false,
-                          });
-
-                          Navigator.pop(context);
-                        },
-                        child: const Text("Save"),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          );
-        },
+        onPressed: showAddResourceDialog,
         child: const Icon(Icons.add),
       ),
     );
