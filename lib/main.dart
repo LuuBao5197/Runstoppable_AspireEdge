@@ -1,14 +1,17 @@
-import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/NotificationPage.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
-import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
+import 'package:trackmentalhealth/pages/login/authentication.dart';
+import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
+import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/utils/NotificationListenerWidget.dart';
@@ -24,13 +27,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Khởi tạo Firestore
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
-  
+
   print("🔥 Firebase connected successfully");
   print("🔥 Firestore initialized successfully");
 
@@ -85,32 +88,15 @@ class TrackMentalHealthApp extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Đang kết nối Firebase...'),
-                  ],
-                ),
+                child: CircularProgressIndicator(),
               ),
             );
           }
-          
-          // Nếu có lỗi
-          if (snapshot.hasError) {
-            print('❌ Auth state error: ${snapshot.error}');
-            return const LoginPage();
-          }
-          
           // Nếu có dữ liệu người dùng (đã đăng nhập)
-          if (snapshot.hasData && snapshot.data != null) {
-            print('✅ User authenticated: ${snapshot.data!.uid}');
+          if (snapshot.hasData) {
             return const MainScreen(); // Đi thẳng vào màn hình chính
           }
-          
           // Nếu không có dữ liệu (chưa đăng nhập)
-          print('ℹ️ No user authenticated, showing login page');
           return const LoginPage(); // Hiển thị trang đăng nhập
         },
       ),
@@ -130,7 +116,7 @@ class _MainScreenState extends State<MainScreen> {
   String? fullname;
   String? avatarUrl;
   bool _loadingProfile = true;
-  StreamSubscription<DocumentSnapshot>? _firestoreSubscription;
+
 
   bool hasNewNotification = false;
 
@@ -138,124 +124,51 @@ class _MainScreenState extends State<MainScreen> {
     const NotificationsPage(),
     const SearchPage(),
     const ProfilePage(),
-    const CareerBankPage(),
   ];
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
-    _setupFirestoreListener();
-  }
-
-  void _setupFirestoreListener() {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      // Lắng nghe thay đổi trong Firestore user document
-      _firestoreSubscription = FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .snapshots()
-          .listen((snapshot) {
-        if (snapshot.exists && mounted) {
-          final data = snapshot.data()!;
-          setState(() {
-            fullname = data['fullname'] ?? currentUser.displayName ?? "User";
-            avatarUrl = data['avatar'] ?? currentUser.photoURL;
-          });
-          print('🔄 Profile updated from Firestore listener');
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _firestoreSubscription?.cancel();
-    super.dispose();
   }
 
 
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
     try {
-      // Lấy user hiện tại từ Firebase Auth
-      final currentUser = FirebaseAuth.instance.currentUser;
-      
-      if (currentUser == null) {
-        print('⚠️ No current user found');
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final userId = prefs.getInt('userId');
+
+      if (userId == null || token == null) {
         setState(() => _loadingProfile = false);
         return;
       }
 
-      print('🔍 Loading profile for user: ${currentUser.uid}');
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-      // Lấy thông tin từ Firestore
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        String? avatar = data['avatar'];
+        if (avatar != null && !avatar.startsWith('http')) {
+          avatar = '${ApiConstants.baseUrl}/uploads/$avatar';
+        }
 
-      if (userDoc.exists) {
-        final data = userDoc.data()!;
         setState(() {
-          fullname = data['fullname'] ?? currentUser.displayName ?? "User";
-          avatarUrl = data['avatar'] ?? currentUser.photoURL;
+          fullname = data['fullname'] ?? "User";
+          avatarUrl = avatar;
           _loadingProfile = false;
         });
 
-        // Cập nhật SharedPreferences để đồng bộ
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('uid', currentUser.uid);
-        await prefs.setString('email', currentUser.email ?? '');
-        await prefs.setString('fullname', fullname ?? '');
-        if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-          await prefs.setString('avatar', avatarUrl!);
-        }
-        
-        print('✅ Profile loaded from Firestore');
+        if (avatarUrl != null) await prefs.setString('avatarUrl', avatarUrl!);
       } else {
-        // Nếu không có trong Firestore, tạo document mới
-        print('📝 Creating new user document in Firestore');
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .set({
-          'uid': currentUser.uid,
-          'email': currentUser.email,
-          'fullname': currentUser.displayName ?? 'User',
-          'avatar': currentUser.photoURL ?? '',
-          'role': 'user',
-          'createdAt': FieldValue.serverTimestamp(),
-          'lastLoginAt': FieldValue.serverTimestamp(),
-        });
-
-        setState(() {
-          fullname = currentUser.displayName ?? "User";
-          avatarUrl = currentUser.photoURL;
-          _loadingProfile = false;
-        });
-
-        // Cập nhật SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('uid', currentUser.uid);
-        await prefs.setString('email', currentUser.email ?? '');
-        await prefs.setString('fullname', fullname ?? '');
-        if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-          await prefs.setString('avatar', avatarUrl!);
-        }
-        
-        print('✅ New user document created');
+        setState(() => _loadingProfile = false);
       }
-    } catch (e) {
-      print('❌ Error loading profile: $e');
-      // Fallback: lấy từ SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      setState(() {
-        fullname = prefs.getString('fullname') ?? "User";
-        avatarUrl = prefs.getString('avatar');
-        _loadingProfile = false;
-      });
+    } catch (_) {
+      setState(() => _loadingProfile = false);
     }
   }
 
@@ -303,10 +216,6 @@ class _MainScreenState extends State<MainScreen> {
                     icon: Icon(Icons.mood),
                     label: Text("Diary"),
                   ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("CareerBank"),
-                  ),
                 ],
               ),
             ),
@@ -341,10 +250,6 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Test',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance),
-            label: 'CareerBank',
-          ),
         ],
       ),
     );
@@ -410,15 +315,15 @@ class _MainScreenState extends State<MainScreen> {
                       CircleAvatar(
                         radius: 30,
                         backgroundImage:
-                            (avatarUrl != null && avatarUrl!.isNotEmpty)
+                        (avatarUrl != null && avatarUrl!.isNotEmpty)
                             ? NetworkImage(avatarUrl!)
                             : null,
                         child: (avatarUrl == null || avatarUrl!.isEmpty)
                             ? const Icon(
-                                Icons.person,
-                                size: 40,
-                                color: Colors.white,
-                              )
+                          Icons.person,
+                          size: 40,
+                          color: Colors.white,
+                        )
                             : null,
                       ),
                       const SizedBox(height: 8),
@@ -474,37 +379,15 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   title: const Text('Logout'),
                   onTap: () async {
-                    try {
-                      // Đăng xuất Firebase
-                      await FirebaseAuth.instance.signOut();
-                      
-                      // Đăng xuất Google nếu có
-                      final googleSignIn = GoogleSignIn();
-                      if (await googleSignIn.isSignedIn()) {
-                        await googleSignIn.signOut();
-                      }
-                      
-                      // Xóa dữ liệu local
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.clear();
+                    await AuthServices().logout();
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.clear();
 
-                      if (!mounted) return;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                      );
-                    } catch (e) {
-                      print('Logout error: $e');
-                      // Vẫn xóa dữ liệu local và chuyển về login
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.clear();
-                      
-                      if (!mounted) return;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                      );
-                    }
+                    if (!mounted) return;
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                    );
                   },
                 ),
               ],
@@ -521,11 +404,15 @@ class _MainScreenState extends State<MainScreen> {
                   _screens[_selectedIndex],
 
                   // NotificationListenerWidget (ẩn, chỉ lắng nghe)
-                  Builder(
-                    builder: (context) {
-                      final currentUser = FirebaseAuth.instance.currentUser;
-                      if (currentUser == null) return const SizedBox.shrink();
-                      return NotificationListenerWidget(userId: currentUser.uid);
+                  FutureBuilder<int?>(
+                    future: SharedPreferences.getInstance().then(
+                          (prefs) => prefs.getInt('userId'),
+                    ),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const SizedBox.shrink();
+                      final userId = snapshot.data;
+                      if (userId == null) return const SizedBox.shrink();
+                      return NotificationListenerWidget(userId: userId);
                     },
                   ),
                 ],
