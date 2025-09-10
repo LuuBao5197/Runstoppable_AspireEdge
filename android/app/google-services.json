@@ -12,7 +12,36 @@
           "package_name": "com.aspiration.aspireedge"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1035803144115-6qnnioggcudrgcm8rad0qlvc0sl4km8q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aspiration.aspireedge",
+            "certificate_hash": "586ca5735ed5c757e8b567da39d5ee8a81443882"
+          }
+        },
+        {
+          "client_id": "1035803144115-ggi18nh8jpqppds4mjmfbceupr8t2qoq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aspiration.aspireedge",
+            "certificate_hash": "ff1afe979b4f31e5955e6c3981c27f2d594f7e42"
+          }
+        },
+        {
+          "client_id": "1035803144115-pp64ecmuj6vrlub767o0qp17hn1cu0mv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aspiration.aspireedge",
+            "certificate_hash": "168800037030276134273558f4c890889ec56996"
+          }
+        },
+        {
+          "client_id": "1035803144115-uvl45dju0rihlspo1js34ls02lkeute8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB-pvv4737JpMf7uFL6CGMv5h9APW7XJCI"
@@ -20,7 +49,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1035803144115-uvl45dju0rihlspo1js34ls02lkeute8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

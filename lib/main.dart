@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/NotificationPage.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
+import 'package:trackmentalhealth/pages/login/authentication.dart';
+import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
@@ -368,12 +370,10 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   title: const Text('Logout'),
                   onTap: () async {
+                    await AuthServices().logout();
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.clear();
-                    // await FirebaseAuth.instance.signOut();
-                    final googleSignIn = GoogleSignIn();
-                    if (await googleSignIn.isSignedIn())
-                      await googleSignIn.signOut();
+
                     if (!mounted) return;
                     Navigator.pushReplacement(
                       context,
