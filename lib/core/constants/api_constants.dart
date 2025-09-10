@@ -19,5 +19,6 @@ class ApiConstants {
   static const String getLessons = '$baseUrl/lesson';
   static const String getExercises = '$baseUrl/exercise/';
   static const String getArticles = '$baseUrl/article/';
+  static const String upload = '$baseUrl/upload';
 
 }
