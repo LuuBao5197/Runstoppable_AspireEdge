@@ -29,11 +29,9 @@ dependencies:
   zego_uikit_signaling_plugin: ^2.7.5
 
   uuid: ^4.5.1
-  #  stomp_dart_client: ^1.0.0
-  #  permission_handler: ^11.3.0
   firebase_core: ^3.4.0
   firebase_auth: ^5.3.1
-  #  stomp_dart_client: ^1.0.0
+  cloud_firestore: ^5.4.3
   flutter_webrtc: ^1.0.0
   permission_handler: ^12.0.1
   google_sign_in: ^6.2.1
