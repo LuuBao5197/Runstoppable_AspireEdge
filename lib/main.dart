@@ -5,7 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/pages/NotificationPage.dart';
+import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -112,7 +112,7 @@ class _MainScreenState extends State<MainScreen> {
   bool hasNewNotification = false;
 
   final List<Widget> _screens = [
-    const NotificationsPage(),
+    const NotificationScreen(),
     const SearchPage(),
     const ProfilePage(),
   ];
