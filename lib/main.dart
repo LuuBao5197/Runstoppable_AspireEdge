@@ -5,7 +5,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
+import 'package:trackmentalhealth/pages/ResourceScreen.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -13,12 +15,13 @@ import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
-import 'package:trackmentalhealth/utils/NotificationListenerWidget.dart';
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -26,15 +29,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  // Khởi tạo Firestore
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
-
   print("🔥 Firebase connected successfully");
-  print("🔥 Firestore initialized successfully");
+
+  //khoi tao notice
+  // Android init
 
   runApp(
     ChangeNotifierProvider(
@@ -123,6 +121,7 @@ class _MainScreenState extends State<MainScreen> {
     const NotificationScreen(),
     const SearchPage(),
     const ProfilePage(),
+    const ResourceScreen()
   ];
 
   @override
@@ -251,6 +250,10 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Test',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
+          BottomNavigationBarItem( // ✅ thêm Resource tab
+            icon: Icon(Icons.book),
+            label: 'Resource',
+          ),
         ],
       ),
     );
@@ -316,15 +319,15 @@ class _MainScreenState extends State<MainScreen> {
                       CircleAvatar(
                         radius: 30,
                         backgroundImage:
-                        (avatarUrl != null && avatarUrl!.isNotEmpty)
+                            (avatarUrl != null && avatarUrl!.isNotEmpty)
                             ? NetworkImage(avatarUrl!)
                             : null,
                         child: (avatarUrl == null || avatarUrl!.isEmpty)
                             ? const Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Colors.white,
-                        )
+                                Icons.person,
+                                size: 40,
+                                color: Colors.white,
+                              )
                             : null,
                       ),
                       const SizedBox(height: 8),
@@ -405,19 +408,6 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   // Màn hình chính
                   _screens[_selectedIndex],
-
-                  // NotificationListenerWidget (ẩn, chỉ lắng nghe)
-                  FutureBuilder<int?>(
-                    future: SharedPreferences.getInstance().then(
-                          (prefs) => prefs.getInt('userId'),
-                    ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const SizedBox.shrink();
-                      final userId = snapshot.data;
-                      if (userId == null) return const SizedBox.shrink();
-                      return NotificationListenerWidget(userId: userId);
-                    },
-                  ),
                 ],
               ),
             ),

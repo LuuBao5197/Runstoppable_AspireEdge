@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
-import '../../utils/showToast.dart';
+
+import '../DTO/SendNoticeDTO.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -12,79 +14,69 @@ class NotificationScreen extends StatefulWidget {
 
 class _NotificationScreenState extends State<NotificationScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  String filter = 'All';
 
-  /// 🔹 Lưu notification vào Firestore
-  Future<void> saveNotificationToFirestore(Map<String, dynamic> noti) async {
+  String filter = 'All';
+  List<String> oldIds = [];
+
+  // Save notification using DTO
+  Future<void> saveNotificationToFirestore(SendNoticeDTO notice) async {
     try {
-      await firestore.collection("notifications").add({
-        "title": noti["title"],
-        "message": noti["message"],
-        "datetime": noti["datetime"] ?? DateTime.now().toIso8601String(),
-        "isRead": noti["isRead"] ?? false,
-        "createdAt": FieldValue.serverTimestamp(),
-      });
-      showToast("✅ Notification saved to Firestore", "success");
+      await firestore.collection("notifications").add(notice.toMap());
+      _showToast("Notification '${notice.title}' sent!");
     } catch (e) {
-      showToast("❌ Lỗi khi lưu Firestore: $e", "error");
+      debugPrint("❌ Error saving Firestore: $e");
+      _showToast("Error sending notification");
     }
   }
 
-  /// 🔹 Đánh dấu đã đọc
   Future<void> markAsRead(String id) async {
     try {
-      await firestore.collection("notifications").doc(id).update({
-        "isRead": true,
-      });
+      await firestore.collection("notifications").doc(id).update({"isRead": true});
     } catch (e) {
-      showToast("❌ Lỗi khi cập nhật Firestore: $e", "error");
+      debugPrint("❌ Error updating Firestore: $e");
     }
   }
 
-  /// 🔹 Xóa thông báo
   Future<void> deleteNotification(String id) async {
     try {
       await firestore.collection("notifications").doc(id).delete();
-      showToast("✅ Notification deleted", "success");
+      _showToast("Notification deleted");
     } catch (e) {
-      showToast("❌ Lỗi khi xóa Firestore: $e", "error");
+      debugPrint("❌ Error deleting Firestore: $e");
     }
   }
 
-  /// 🔹 Hiển thị chi tiết thông báo
-  Future<void> showNotificationDetail(Map<String, dynamic> noti, String id) {
+  Future<void> showNotificationDetail(Map<String, dynamic> noti) {
     final theme = Theme.of(context);
     return showDialog(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        insetPadding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceVariant,
-                borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.notifications_none,
-                      color: theme.colorScheme.primary, size: 22),
+                  Icon(Icons.notifications_none, color: theme.colorScheme.primary, size: 22),
                   const SizedBox(width: 8),
-                  Text("Notification Details",
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary)),
+                  Text(
+                    "Notification Details",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
                 ],
               ),
             ),
-
-            // Body
             Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -94,12 +86,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text(
-                        DateFormat("HH:mm - dd/MM/yyyy")
-                            .format(DateTime.parse(noti['datetime'])),
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
+                        DateFormat("HH:mm - dd/MM/yyyy").format(DateTime.parse(noti['datetime'])),
+                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12),
                       ),
                     ),
                   const SizedBox(height: 10),
@@ -116,37 +104,78 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       color: theme.colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(noti['message'] ?? '',
-                        style: TextStyle(
-                            fontSize: 15,
-                            height: 1.6,
-                            color: theme.colorScheme.onSurface)),
+                    child: Text(
+                      noti['message'] ?? '',
+                      style: TextStyle(fontSize: 15, height: 1.6, color: theme.colorScheme.onSurface),
+                    ),
                   ),
                 ],
               ),
             ),
-
-            // Footer
             Padding(
-              padding: const EdgeInsets.only(bottom: 14, right: 14),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    shape: const StadiumBorder(),
-                    side: BorderSide(color: theme.colorScheme.outline),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 10),
+              padding: const EdgeInsets.only(bottom: 14, right: 14, left: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      side: BorderSide(color: theme.colorScheme.outline),
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                    ),
+                    child: Text("Close", style: TextStyle(color: theme.colorScheme.onSurface)),
                   ),
-                  child: Text("Close",
-                      style: TextStyle(color: theme.colorScheme.onSurface)),
-                ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      // Hiển thị confirm dialog trước khi xóa
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text("Confirm Deletion"),
+                          content: const Text("Are you sure you want to delete this notification?"),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text("Cancel")),
+                            ElevatedButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.error),
+                                child: const Text("Delete", style: TextStyle(color: Colors.white))),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true) {
+                        deleteNotification(noti['id']);
+                        Navigator.pop(context); // Đóng detail dialog sau khi xóa
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.error,
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                    child: const Text("Delete", style: TextStyle(color: Colors.white)),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showToast(String message) {
+    Fluttertoast.showToast(
+      msg: message,
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.TOP,
+      backgroundColor: Colors.teal,
+      textColor: Colors.white,
+      fontSize: 16,
     );
   }
 
@@ -168,21 +197,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         ],
       ),
-
-      /// 🔹 Dùng StreamBuilder để hiển thị dữ liệu realtime từ Firestore
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestore
-            .collection("notifications")
-            .orderBy("createdAt", descending: true)
-            .snapshots(),
+        stream: firestore.collection("notifications").orderBy("createdAt", descending: true).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
           final docs = snapshot.data!.docs;
-
-          // map dữ liệu từ firestore
           List<Map<String, dynamic>> notis = docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
             return {
@@ -194,15 +216,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
             };
           }).toList();
 
-          // lọc theo trạng thái
+          // Detect new notification and show toast
+          final currentIds = notis.map((n) => n['id'] as String).toList();
+          if (oldIds.isNotEmpty && currentIds.length > oldIds.length) {
+            final newNoti = notis.first;
+            _showToast("${newNoti['title'] ?? 'New notification'}: ${newNoti['message'] ?? ''}");
+          }
+          oldIds = currentIds;
+
           if (filter == 'Unread') {
             notis = notis.where((n) => n['isRead'] != true).toList();
           }
 
           if (notis.isEmpty) {
-            return const Center(
-                child: Text("No notifications",
-                    style: TextStyle(fontSize: 16)));
+            return const Center(child: Text("No notifications", style: TextStyle(fontSize: 16)));
           }
 
           return ListView.builder(
@@ -219,57 +246,38 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   return await showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
-                      title: const Text("Xác nhận xóa"),
-                      content: const Text(
-                          "Bạn có chắc chắn muốn xóa thông báo này không?"),
+                      title: const Text("Confirm Deletion"),
+                      content: const Text("Are you sure you want to delete this notification?"),
                       actions: [
-                        TextButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(false),
-                            child: const Text("Hủy")),
-                        ElevatedButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(true),
-                            child: const Text("Xóa")),
+                        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text("Cancel")),
+                        ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text("Delete")),
                       ],
                     ),
                   );
                 },
                 onDismissed: (_) => deleteNotification(noti['id']),
                 background: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.error,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: theme.colorScheme.error, borderRadius: BorderRadius.circular(12)),
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: const Icon(Icons.delete,
-                      color: Colors.white, size: 28),
+                  child: const Icon(Icons.delete, color: Colors.white, size: 28),
                 ),
                 child: Card(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  color: isRead
-                      ? theme.colorScheme.surfaceVariant
-                      : theme.colorScheme.surface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: isRead ? theme.colorScheme.surfaceVariant : theme.colorScheme.surface,
                   elevation: 3,
                   margin: const EdgeInsets.symmetric(vertical: 6),
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
                     leading: Icon(
-                      isRead
-                          ? Icons.notifications_none
-                          : Icons.notifications_active,
-                      color: isRead
-                          ? theme.colorScheme.onSurfaceVariant
-                          : theme.colorScheme.error,
+                      isRead ? Icons.notifications_none : Icons.notifications_active,
+                      color: isRead ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.error,
                       size: 32,
                     ),
                     title: Text(
                       noti['title'] ?? '',
                       style: TextStyle(
-                        fontWeight:
-                        isRead ? FontWeight.normal : FontWeight.bold,
+                        fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
                         fontSize: 16,
                         color: theme.colorScheme.onSurface,
                       ),
@@ -278,22 +286,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       noti['message'] ?? '',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant),
+                      style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                     ),
                     trailing: isRead
                         ? null
-                        : Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.error,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+                        : Container(width: 10, height: 10, decoration: BoxDecoration(color: theme.colorScheme.error, shape: BoxShape.circle)),
                     onTap: () {
                       markAsRead(noti['id']);
-                      showNotificationDetail(noti, noti['id']);
+                      showNotificationDetail(noti);
                     },
                   ),
                 ),
@@ -301,18 +301,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
             },
           );
         },
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          saveNotificationToFirestore({
-            "title": "Thông báo test",
-            "message": "Đây là thông báo test lúc ${DateTime.now()}",
-            "datetime": DateTime.now().toIso8601String(),
-            "isRead": false,
-          });
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }
