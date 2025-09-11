@@ -16,7 +16,6 @@ import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
-import 'package:trackmentalhealth/utils/import_career_data.dart';
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
@@ -31,7 +30,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await importCareerData();
+
   print("🔥 Firebase connected successfully");
 
   //khoi tao notice
