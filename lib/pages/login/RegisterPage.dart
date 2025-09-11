@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -12,13 +14,16 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _fullNameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
 
+  String _role = "students"; // default chọn Students
   bool _isRegistering = false;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   final AuthServices _authServices = AuthServices();
 
@@ -27,37 +32,66 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isRegistering = true);
 
-    final res = await _authServices.signUpUser(
-      name: _fullNameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-      phone: _phoneController.text.trim(),
-      address: _addressController.text.trim(),
-    );
-
-    setState(() => _isRegistering = false);
-
-    if (res == "Successfully") {
-      // Hiển thị thông báo thành công và chuyển về Login
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Success'),
-          content: const Text('Registration Successfully!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+    try {
+      // Tạo user mới trong Firebase Auth
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
-    } else {
-      _showDialog("Error", res);
+
+      final user = userCredential.user;
+      if (user != null) {
+        // Cập nhật displayName
+        await user.updateDisplayName(_nameController.text.trim());
+
+        // Thêm user vào Firestore collection "account"
+        await FirebaseFirestore.instance.collection("account").doc(user.uid).set({
+          "uid": user.uid,
+          "name": _nameController.text.trim(),
+          "email": user.email,
+          "phone": _phoneController.text.trim(),
+          "address": _addressController.text.trim(),
+          "role": _role,
+          "createdAt": FieldValue.serverTimestamp(),
+          "isEmailVerified": user.emailVerified, // ban đầu = false
+        });
+
+        // Gửi email xác thực
+        await user.sendEmailVerification();
+
+        setState(() => _isRegistering = false);
+
+        // Thông báo thành công
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Verify your email"),
+            content: Text(
+              "A verification link has been sent to ${user.email}. "
+                  "If you don’t see it in your inbox, please check your Spam or Promotions folder.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => _isRegistering = false);
+      String message = "Registration failed";
+      if (e.code == 'email-already-in-use') {
+        message = "This email is already registered.";
+      } else if (e.code == 'weak-password') {
+        message = "Password is too weak.";
+      }
+      _showDialog("Error", message);
     }
   }
 
@@ -79,7 +113,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _emailController.dispose();
-    _fullNameController.dispose();
+    _nameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _phoneController.dispose();
@@ -132,7 +166,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                 // --- Full Name
                 TextFormField(
-                  controller: _fullNameController,
+                  controller: _nameController,
                   decoration: const InputDecoration(
                     labelText: "Full Name",
                     prefixIcon: Icon(Icons.person_outline),
@@ -166,6 +200,34 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 const SizedBox(height: 16),
 
+                // --- Role chọn radio button
+                const Text("Select Role:",
+                    style:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                RadioListTile(
+                  title: const Text("Students"),
+                  value: "students",
+                  groupValue: _role,
+                  onChanged: (val) =>
+                      setState(() => _role = val.toString()),
+                ),
+                RadioListTile(
+                  title: const Text("Graduates"),
+                  value: "graduates",
+                  groupValue: _role,
+                  onChanged: (val) =>
+                      setState(() => _role = val.toString()),
+                ),
+                RadioListTile(
+                  title: const Text("Professionals"),
+                  value: "professionals",
+                  groupValue: _role,
+                  onChanged: (val) =>
+                      setState(() => _role = val.toString()),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Password
                 // --- Password
                 TextFormField(
                   controller: _passwordController,
@@ -174,11 +236,76 @@ class _RegisterPageState extends State<RegisterPage> {
                     labelText: "Password",
                     prefixIcon: Icon(Icons.lock_outline),
                   ),
-                  validator: (value) =>
-                  value != null && value.length < 6 ? "Min 6 chars" : null,
+                  onChanged: (value) {
+                    setState(() {}); // để cập nhật strength khi gõ
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Password required";
+                    }
+                    if (value.length < 8) {
+                      return "At least 8 characters";
+                    }
+                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                      return "Must contain at least 1 uppercase letter";
+                    }
+                    if (!RegExp(r'[a-z]').hasMatch(value)) {
+                      return "Must contain at least 1 lowercase letter";
+                    }
+                    if (!RegExp(r'[0-9]').hasMatch(value)) {
+                      return "Must contain at least 1 number";
+                    }
+                    if (!RegExp(r'[!@#\$&*~%^.,;?]').hasMatch(value)) {
+                      return "Must contain at least 1 special character";
+                    }
+                    return null;
+                  },
+                ),
+
+// --- Strength Indicator
+                Builder(
+                  builder: (context) {
+                    String pwd = _passwordController.text;
+                    String strength = "Weak";
+                    Color color = Colors.red;
+
+                    int score = 0;
+                    if (pwd.length >= 8) score++;
+                    if (RegExp(r'[A-Z]').hasMatch(pwd)) score++;
+                    if (RegExp(r'[a-z]').hasMatch(pwd)) score++;
+                    if (RegExp(r'[0-9]').hasMatch(pwd)) score++;
+                    if (RegExp(r'[!@#\$&*~%^.,;?]').hasMatch(pwd)) score++;
+
+                    if (score >= 5) {
+                      strength = "Strong";
+                      color = Colors.green;
+                    } else if (score >= 3) {
+                      strength = "Medium";
+                      color = Colors.orange;
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: score / 5,
+                          color: color,
+                          backgroundColor: Colors.grey[300],
+                          minHeight: 6,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Strength: $strength",
+                          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
-
                 // --- Confirm Password
                 TextFormField(
                   controller: _confirmPasswordController,
@@ -187,9 +314,15 @@ class _RegisterPageState extends State<RegisterPage> {
                     labelText: "Confirm Password",
                     prefixIcon: Icon(Icons.lock_reset_outlined),
                   ),
-                  validator: (value) => value != _passwordController.text
-                      ? "Passwords do not match"
-                      : null,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Confirm password required";
+                    }
+                    if (value != _passwordController.text) {
+                      return "Passwords do not match";
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
 
@@ -206,9 +339,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
