@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:trackmentalhealth/main.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/constants/api_constants.dart';
+import 'package:dio/dio.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,16 +15,23 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  String fullname = "";
-  String address = "";
-  String dob = "";
-  String gender = "Male";
-  String email = "";
-  String role = "";
-  String? avatarUrl;
 
-  File? _avatarFile;
-  bool _loading = true;
+  File? _imageFile;
+  String? _avatarUrl;
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _emailController = TextEditingController();
+
+  String _role = "students";
+  bool _isLoading = true;
+
+  final _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+
+  // ⚡ Cloudinary config
+  final String cloudName = "dbghucaix";
+  final String uploadPreset = "ml_default";
 
   @override
   void initState() {
@@ -33,174 +40,337 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("token");
-    final userId = prefs.getInt("userId");
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) return;
 
-    if (token == null || userId == null) return;
+      final doc = await _firestore.collection("account").doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        _avatarUrl = data["avatarUrl"];
+        _nameController.text = data["name"] ?? "";
+        _phoneController.text = data["phone"] ?? "";
+        _addressController.text = data["address"] ?? "";
+        _emailController.text = data["email"] ?? "";
+        _role = data["role"] ?? "students";
+      }
+    } catch (e) {
+      debugPrint("Error loading profile: $e");
+    }
 
-    final response = await http.get(
-      Uri.parse("${ApiConstants.baseUrl}/users/profile/$userId"),
-      headers: {"Authorization": "Bearer $token"},
-    );
+    setState(() => _isLoading = false);
+  }
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        fullname = data['fullname'] ?? "";
-        address = data['address'] ?? "";
-        dob = data['dob'] ?? "";
-        gender = data['gender'] ?? "Male";
-        email = data['email'] ?? "";
-        role = data['role'] ?? "";
-        avatarUrl = data['avatar'];
-        _loading = false;
+  Future<String?> _uploadToCloudinary(File file) async {
+    final url = "https://api.cloudinary.com/v1_1/$cloudName/image/upload";
+    try {
+      FormData formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(file.path),
+        "upload_preset": uploadPreset,
       });
-    } else {
-      debugPrint("Failed to load profile: ${response.body}");
-      setState(() => _loading = false);
+
+      final response = await Dio().post(url, data: formData);
+
+      if (response.statusCode == 200) {
+        return response.data["secure_url"];
+      } else {
+        debugPrint("Cloudinary upload failed: ${response.data}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("Cloudinary upload error: $e");
+      return null;
     }
   }
 
-  Future<void> _pickAvatar() async {
+  Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
+    final picked = await picker.pickImage(source: source, imageQuality: 75);
 
     if (picked != null) {
-      setState(() => _avatarFile = File(picked.path));
+      setState(() {
+        _imageFile = File(picked.path);
+      });
+
+      final url = await _uploadToCloudinary(_imageFile!);
+      if (url != null) {
+        final uid = _auth.currentUser?.uid;
+        if (uid != null) {
+          await _firestore.collection("account").doc(uid).update({"avatarUrl": url});
+        }
+        setState(() {
+          _avatarUrl = url;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Upload ảnh thất bại. Vui lòng thử lại.")),
+        );
+      }
     }
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text("Chụp ảnh"),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text("Chọn từ thư viện"),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _saveProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("token");
+    if (!_formKey.currentState!.validate()) return;
 
-    if (token == null) return;
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) return;
 
-    var request = http.MultipartRequest(
-      "POST",
-      Uri.parse("${ApiConstants.baseUrl}/users/edit-profile"),
-    );
+      await _firestore.collection("account").doc(uid).update({
+        "name": _nameController.text.trim(),
+        "phone": _phoneController.text.trim(),
+        "address": _addressController.text.trim(),
+        "role": _role,
+      });
 
-    request.headers['Authorization'] = "Bearer $token";
-    request.fields['fullname'] = fullname;
-    request.fields['address'] = address;
-    request.fields['dob'] = dob;
-    request.fields['gender'] = gender;
-
-    if (_avatarFile != null) {
-      request.files.add(await http.MultipartFile.fromPath('avatar', _avatarFile!.path));
-    }
-
-    final response = await request.send();
-
-    if (response.statusCode == 200) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ Update Successfully!")),
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text("Success 🎉",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            content: const Text("Your profile has been updated successfully."),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                      const MainScreen(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(0.0, 0.2);
+                        const end = Offset.zero;
+                        const curve = Curves.easeOutCubic;
+
+                        var tween = Tween(begin: begin, end: end)
+                            .chain(CurveTween(curve: curve));
+                        var fadeTween = Tween<double>(begin: 0, end: 1);
+
+                        return SlideTransition(
+                          position: animation.drive(tween),
+                          child: FadeTransition(
+                            opacity: animation.drive(fadeTween),
+                            child: child,
+                          ),
+                        );
+                      },
+                      transitionDuration: const Duration(milliseconds: 500),
+                    ),
+                  );
+                },
+                child: const Text("OK"),
+              ),
+            ],
+          ),
         );
-        _loadProfile(); // reload profile sau khi save
-        Navigator.pop(context, true);
       }
-    } else {
-      debugPrint("Update failed: ${response.statusCode}");
+    } catch (e) {
+      debugPrint("Error saving profile: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ Update failed!")),
+          SnackBar(content: Text("Error: $e")),
         );
       }
     }
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Edit Profile"),
+        title: const Text("My Profile"),
         centerTitle: true,
+        elevation: 2,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              GestureDetector(
-                onTap: _pickAvatar,
-                child: CircleAvatar(
-                  radius: 60,
-                  backgroundImage: _avatarFile != null
-                      ? FileImage(_avatarFile!)
-                      : (avatarUrl != null ? NetworkImage(avatarUrl!) : null) as ImageProvider?,
-                  child: (_avatarFile == null && avatarUrl == null)
-                      ? const Icon(Icons.person, size: 60)
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // Avatar
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: Colors.blue.shade100,
+                  backgroundImage:
+                  _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+                  child: _avatarUrl == null
+                      ? const Icon(Icons.person, size: 50, color: Colors.white)
                       : null,
                 ),
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                initialValue: fullname,
-                decoration: const InputDecoration(labelText: "Full Name"),
-                onChanged: (val) => fullname = val,
-              ),
-              TextFormField(
-                initialValue: address,
-                decoration: const InputDecoration(labelText: "Address"),
-                onChanged: (val) => address = val,
-              ),
-              TextFormField(
-                controller: TextEditingController(text: dob), // dùng controller để hiển thị dob
-                readOnly: true, // không cho gõ tay
-                decoration: const InputDecoration(
-                  labelText: "Date of Birth",
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.calendar_today),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: InkWell(
+                    onTap: _showImagePickerOptions,
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.blue,
+                      child: const Icon(Icons.camera_alt,
+                          size: 18, color: Colors.white),
+                    ),
+                  ),
                 ),
-                onTap: () async {
-                  DateTime? pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: dob.isNotEmpty ? DateTime.parse(dob) : DateTime.now(),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime.now(),
-                  );
-                  if (pickedDate != null) {
-                    setState(() {
-                      dob = pickedDate.toIso8601String().split("T")[0];
-                      // format yyyy-MM-dd để gửi API
-                    });
-                  }
-                },
+              ],
+            ),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              DropdownButtonFormField(
-                value: gender,
-                items: const [
-                  DropdownMenuItem(value: "Male", child: Text("Male")),
-                  DropdownMenuItem(value: "Female", child: Text("Female")),
-                ],
-                onChanged: (val) => setState(() => gender = val.toString()),
-                decoration: const InputDecoration(labelText: "Gender"),
-              ),
-              TextFormField(
-                initialValue: email,
-                decoration: const InputDecoration(labelText: "Email"),
-                readOnly: true,
-                enabled: false,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveProfile,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                  backgroundColor: Colors.teal,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Email (readonly)
+                      TextFormField(
+                        controller: _emailController,
+                        enabled: false,
+                        decoration: const InputDecoration(
+                          labelText: "Email",
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Name
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: "Full Name",
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        validator: (value) =>
+                        value == null || value.isEmpty ? "Required" : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Phone
+                      TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: "Phone",
+                          prefixIcon: Icon(Icons.phone_outlined),
+                        ),
+                        validator: (value) =>
+                        value == null || value.isEmpty ? "Required" : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Address
+                      TextFormField(
+                        controller: _addressController,
+                        decoration: const InputDecoration(
+                          labelText: "Address",
+                          prefixIcon: Icon(Icons.home_outlined),
+                        ),
+                        validator: (value) =>
+                        value == null || value.isEmpty ? "Required" : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Role radio buttons
+                      const Text(
+                        "Select Role:",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      RadioListTile(
+                        title: const Text("Students"),
+                        value: "students",
+                        groupValue: _role,
+                        onChanged: (val) =>
+                            setState(() => _role = val.toString()),
+                      ),
+                      RadioListTile(
+                        title: const Text("Graduates"),
+                        value: "graduates",
+                        groupValue: _role,
+                        onChanged: (val) =>
+                            setState(() => _role = val.toString()),
+                      ),
+                      RadioListTile(
+                        title: const Text("Professionals"),
+                        value: "professionals",
+                        groupValue: _role,
+                        onChanged: (val) =>
+                            setState(() => _role = val.toString()),
+                      ),
+                      const SizedBox(height: 24),
+
+                      ElevatedButton.icon(
+                        onPressed: _saveProfile,
+                        icon: const Icon(Icons.save),
+                        label: const Text("Save"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Text("Save Changes"),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
