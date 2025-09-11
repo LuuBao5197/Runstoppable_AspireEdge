@@ -6,7 +6,7 @@ Future<void> importCareerData() async {
   try {
     // Load JSON từ assets
     final String response =
-    await rootBundle.loadString('assets/career_bank_data.json');
+    await rootBundle.loadString('assets/data/career_bank_data.json');
     final Map<String, dynamic> data = json.decode(response);
 
     final firestore = FirebaseFirestore.instance;

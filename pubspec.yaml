@@ -57,4 +57,4 @@ flutter:
   assets:
     - assets/images/
     - assets/images/LogoTMH.png
-    - assets/career_bank_data.json
+    - assets/data/career_bank_data.json

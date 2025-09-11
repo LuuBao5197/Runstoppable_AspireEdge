@@ -25,7 +25,7 @@ class _CareerBankPageState extends State<CareerBankPage> {
             value: selectedIndustry,
             isExpanded: true,
             items: [
-              "All ",
+              "All",
               "Technology – Engineering",
               "Economics – Management",
               "Healthcare",
