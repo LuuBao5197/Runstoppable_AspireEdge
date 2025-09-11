@@ -123,8 +123,7 @@ class _MainScreenState extends State<MainScreen> {
     const NotificationScreen(),
     const SearchPage(),
     const ProfilePage(),
-    const ResourceMain()
-    const ResourceScreen(),
+    const ResourceMain(),
     const CareerBankPage()
   ];
 
