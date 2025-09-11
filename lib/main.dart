@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
-import 'package:trackmentalhealth/pages/ResourceScreen.dart';
+import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -121,7 +121,7 @@ class _MainScreenState extends State<MainScreen> {
     const NotificationScreen(),
     const SearchPage(),
     const ProfilePage(),
-    const ResourceScreen()
+    const ResourceMain()
   ];
 
   @override
