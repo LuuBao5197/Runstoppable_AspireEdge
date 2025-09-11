@@ -139,14 +139,12 @@ class _MainScreenState extends State<MainScreen> {
     setState(() => _loadingProfile = true);
 
     try {
-      // Lấy user hiện tại từ FirebaseAuth
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         setState(() => _loadingProfile = false);
         return;
       }
 
-      // Truy vấn Firestore theo uid
       final doc = await FirebaseFirestore.instance
           .collection('account')
           .doc(user.uid)
@@ -154,17 +152,11 @@ class _MainScreenState extends State<MainScreen> {
 
       if (doc.exists) {
         final data = doc.data()!;
-
-        String? avatar = data['image'];
-        if (avatar != null && avatar.isNotEmpty && !avatar.startsWith('http')) {
-          // Nếu bạn lưu relative path, có thể cần nối thêm storage bucket URL
-          avatar = "https://firebasestorage.googleapis.com/v0/b/<aspire-edge-app>.appspot.com/o/$avatar?alt=media";
-        }
-
         setState(() {
           name = data['name'] ?? "User";
-          avatarUrl = avatar;
+          avatarUrl = data['avatarUrl'];
           _loadingProfile = false;
+          print("✅ Avatar URL: $avatarUrl");
         });
       } else {
         setState(() => _loadingProfile = false);
@@ -174,6 +166,7 @@ class _MainScreenState extends State<MainScreen> {
       setState(() => _loadingProfile = false);
     }
   }
+
 
   void _onTabTapped(int index) {
     setState(() {
@@ -325,37 +318,48 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 DrawerHeader(
                   decoration: const BoxDecoration(color: Colors.teal),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundImage:
-                            (avatarUrl != null && avatarUrl!.isNotEmpty)
-                            ? NetworkImage(avatarUrl!)
-                            : null,
-                        child: (avatarUrl == null || avatarUrl!.isEmpty)
-                            ? const Icon(
-                                Icons.person,
-                                size: 40,
-                                color: Colors.white,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(height: 8),
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 400),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                        ),
-                        child: Text(
-                          _loadingProfile
-                              ? 'Loading...'
-                              : 'Hello, ${name ?? "User"}',
-                        ),
-                      ),
-                    ],
+                  child: StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('account')
+                        .doc(FirebaseAuth.instance.currentUser!.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      }
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return const Text(
+                          "No profile data",
+                          style: TextStyle(color: Colors.white),
+                        );
+                      }
+
+                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      final avatarUrl = data['avatarUrl'] as String?;
+                      final name = data['name'] ?? "User";
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                                ? NetworkImage(avatarUrl)
+                                : null,
+                            child: (avatarUrl == null || avatarUrl.isEmpty)
+                                ? const Icon(Icons.person, size: 40, color: Colors.white)
+                                : null,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Hello, $name",
+                            style: const TextStyle(color: Colors.white, fontSize: 18),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 ListTile(
