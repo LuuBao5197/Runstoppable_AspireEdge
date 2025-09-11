@@ -1,1 +1,37 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"aspire-edge-app","appId":"1:1035803144115:android:e9f11185e323f1b966a5c6","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"aspire-edge-app","configurations":{"android":"1:1035803144115:android:e9f11185e323f1b966a5c6"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "aspire-edge-app",
+          "appId": "1:1035803144115:android:e9f11185e323f1b966a5c6",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "aspire-edge-app",
+          "configurations": {
+            "android": "1:1035803144115:android:e9f11185e323f1b966a5c6"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+
+      ]
+    }
+  ]
+}
