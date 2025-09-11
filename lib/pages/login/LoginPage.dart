@@ -1,16 +1,10 @@
-import 'dart:convert';
-import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:trackmentalhealth/pages/login/google_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -22,35 +16,33 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = FirebaseServices();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   bool _isObscure = true;
   bool _isLoading = false;
   String? _error;
 
+  // --- Email/Password Login
   Future<void> _handleEmailLogin() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      final user = await _authService.signInWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
+      UserCredential credential = await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
+      final user = credential.user;
 
       if (user != null) {
         if (!user.emailVerified) {
-          // sign out để tránh giữ session
-          await FirebaseAuth.instance.signOut();
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Please verify your email before logging in."),
-              backgroundColor: Colors.blue,
-            ),
-          );
-          return; // dừng tại đây
+          await _auth.signOut();
+          setState(() => _error = "Please verify your email before logging in.");
+          return;
         }
 
-        // Nếu email đã verify → cho login
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('uid', user.uid);
         await prefs.setString('email', user.email ?? '');
@@ -62,19 +54,40 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Login failed: $e")));
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        setState(() => _error = "Invalid email or password.");
+      } else if (e.code == 'invalid-email') {
+        setState(() => _error = "Invalid email format.");
+      } else {
+        setState(() => _error = "Login failed. Please try again.");
+      }
+    } catch (_) {
+      setState(() => _error = "Login failed. Please try again.");
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-
+  // --- Google Login
   Future<void> _handleGoogleLogin() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
-      final user = await _authService.signInWithGoogle();
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => _error = "Google sign-in cancelled.");
+        return;
+      }
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
 
       if (user != null) {
         final prefs = await SharedPreferences.getInstance();
@@ -88,43 +101,20 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Google login failed: $e")));
+    } on FirebaseAuthException catch (_) {
+      setState(() => _error = "Google login failed. Please try again.");
+    } catch (_) {
+      setState(() => _error = "Google login failed. Please try again.");
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  /// Extracts an error message safely from API responses.
-  String _getErrorMessage(http.Response response) {
-    try {
-      final parsed = jsonDecode(response.body);
-      if (parsed is Map<String, dynamic>) {
-        for (final key in ['message', 'error', 'detail', 'msg']) {
-          final value = parsed[key];
-          if (value is String && value.trim().isNotEmpty) return value.trim();
-        }
-      }
-      if (parsed is String && parsed.trim().isNotEmpty) {
-        return parsed.trim();
-      }
-    } catch (_) {
-      // Ignore JSON parsing errors
-    }
-    return response.body.toString().trim();
-  }
-
-  void parseToken(String token) {
-    Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-
-    int userId = decodedToken['userId'];
-    String email = decodedToken['sub'];
-    String role = decodedToken['role'];
-
-    print('User ID: $userId');
-    print('Email: $email');
-    print('Role: $role');
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -141,9 +131,7 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.all(24.0),
           child: Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -159,7 +147,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 16),
+                  // --- Email Field
                   TextField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -168,7 +157,8 @@ class _LoginPageState extends State<LoginPage> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  // --- Password Field
                   TextField(
                     controller: _passwordController,
                     obscureText: _isObscure,
@@ -186,37 +176,20 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Column(
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          minimumSize: const Size(double.infinity, 50),
-                          side: const BorderSide(color: Colors.grey),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: _handleGoogleLogin,
-                        icon: Image.asset(
-                          'assets/images/google_logo.png',
-                          height: 24,
-                        ),
-                        label: const Text("Sign in with Google"),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 8),
+                  // --- Error Message
                   if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.red),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 8),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  // --- Login Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -225,32 +198,41 @@ class _LoginPageState extends State<LoginPage> {
                           ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                           : const Text('Login'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  // --- Google Login
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size(double.infinity, 50),
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: _isLoading ? null : _handleGoogleLogin,
+                    icon: Image.asset('assets/images/google_logo.png', height: 24),
+                    label: const Text("Sign in with Google"),
+                  ),
                   const SizedBox(height: 12),
+                  // --- Forgot Password
                   TextButton(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const ForgotPasswordPage(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
                       );
                     },
                     child: const Text('Forgot password?'),
                   ),
+                  // --- Register Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -259,9 +241,7 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegisterPage(),
-                            ),
+                            MaterialPageRoute(builder: (context) => const RegisterPage()),
                           );
                         },
                         child: const Text('Register'),
