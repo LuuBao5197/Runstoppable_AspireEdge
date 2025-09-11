@@ -1,10 +1,10 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:trackmentalhealth/main.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:dio/dio.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -29,6 +29,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
 
+  // ⚡ Cloudinary config
+  final String cloudName = "dbghucaix";
+  final String uploadPreset = "ml_default";
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final doc = await _firestore.collection("account").doc(uid).get();
       if (doc.exists) {
         final data = doc.data()!;
-        _avatarUrl = data["avatarUrl"] ?? Icon(Icons.person);
+        _avatarUrl = data["avatarUrl"];
         _nameController.text = data["name"] ?? "";
         _phoneController.text = data["phone"] ?? "";
         _addressController.text = data["address"] ?? "";
@@ -57,30 +61,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = false);
   }
 
+  Future<String?> _uploadToCloudinary(File file) async {
+    final url = "https://api.cloudinary.com/v1_1/$cloudName/image/upload";
+    try {
+      FormData formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(file.path),
+        "upload_preset": uploadPreset,
+      });
+
+      final response = await Dio().post(url, data: formData);
+
+      if (response.statusCode == 200) {
+        return response.data["secure_url"];
+      } else {
+        debugPrint("Cloudinary upload failed: ${response.data}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("Cloudinary upload error: $e");
+      return null;
+    }
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, imageQuality: 75); // giảm chất lượng để load nhanh
+    final picked = await picker.pickImage(source: source, imageQuality: 75);
 
     if (picked != null) {
       setState(() {
         _imageFile = File(picked.path);
       });
 
-      // Upload lên Firebase Storage
-      final uid = _auth.currentUser?.uid;
-      if (uid == null) return;
-
-      final ref = FirebaseStorage.instance.ref().child("avatars/$uid.jpg");
-      await ref.putFile(_imageFile!);
-
-      final url = await ref.getDownloadURL();
-
-      // Update Firestore
-      await _firestore.collection("account").doc(uid).update({"avatarUrl": url});
-
-      setState(() {
-        _avatarUrl = url;
-      });
+      final url = await _uploadToCloudinary(_imageFile!);
+      if (url != null) {
+        final uid = _auth.currentUser?.uid;
+        if (uid != null) {
+          await _firestore.collection("account").doc(uid).update({"avatarUrl": url});
+        }
+        setState(() {
+          _avatarUrl = url;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Upload ảnh thất bại. Vui lòng thử lại.")),
+        );
+      }
     }
   }
 
@@ -136,10 +161,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: const Text(
-              "Success 🎉",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            title: const Text("Success 🎉",
+                style: TextStyle(fontWeight: FontWeight.bold)),
             content: const Text("Your profile has been updated successfully."),
             actions: [
               TextButton(
@@ -233,7 +256,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: CircleAvatar(
                       radius: 16,
                       backgroundColor: Colors.blue,
-                      child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                      child: const Icon(Icons.camera_alt,
+                          size: 18, color: Colors.white),
                     ),
                   ),
                 ),
