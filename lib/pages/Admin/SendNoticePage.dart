@@ -53,30 +53,27 @@ class _SendNoticePageState extends State<SendNoticePage> {
     setState(() => _sending = true);
 
     try {
+      SendNoticeDTO notice;
+
       if (_selectedUserId == null) {
-        // Gửi cho tất cả user
-        final snapshot = await FirebaseFirestore.instance.collection('account').get();
-        for (var doc in snapshot.docs) {
-          final notice = SendNoticeDTO(
-            title: title,
-            message: message,
-            userId: doc.id,
-          );
-          await FirebaseFirestore.instance
-              .collection('notifications')
-              .add(notice.toMap());
-        }
+        // Gửi cho tất cả user, không lưu userId
+        notice = SendNoticeDTO(
+          title: title,
+          message: message,
+          userId: null, // bỏ userId
+        );
       } else {
         // Gửi cho user đã chọn
-        final notice = SendNoticeDTO(
+        notice = SendNoticeDTO(
           title: title,
           message: message,
           userId: _selectedUserId,
         );
-        await FirebaseFirestore.instance
-            .collection('notifications')
-            .add(notice.toMap());
       }
+
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .add(notice.toMap());
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Notice sent successfully!')),
