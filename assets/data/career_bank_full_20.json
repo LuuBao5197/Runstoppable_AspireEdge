@@ -1,0 +1,245 @@
+{
+  "Technology – Engineering": [
+    {
+      "title": "Software Developer",
+      "description": "Design, develop, and maintain software, mobile applications, or systems.",
+      "skills": [
+        "Programming (Java, Python, Dart/Flutter)",
+        "Logical thinking",
+        "Problem solving",
+        "Teamwork"
+      ],
+      "salary": "12 – 40 million VND/month",
+      "image": "https://example.com/images/software_developer.jpg",
+      "education_path": {
+        "degree": "Bachelor’s/College degree in Information Technology, Computer Science, or Software Engineering",
+        "courses": [
+          "Web & Mobile Development Bootcamp",
+          "Advanced Object-Oriented Programming",
+          "Database Systems"
+        ],
+        "certificates": [
+          "AWS Certified Developer",
+          "Google Cloud Professional",
+          "Agile/Scrum Practitioner"
+        ],
+        "duration": "4 years (Bachelor’s), 6 months – 1 year (Bootcamps)",
+        "career_level": "Entry to Mid-level",
+        "estimated_cost": "80 – 200 million VND"
+      }
+    },
+    {
+      "title": "Electrical Engineer",
+      "description": "Design, operate, and maintain electrical systems, electronic devices, and telecommunications.",
+      "skills": [
+        "Electrical engineering",
+        "Circuit design",
+        "Automation",
+        "Technical skills"
+      ],
+      "salary": "10 – 25 million VND/month",
+      "image": "https://example.com/images/electrical_engineer.jpg",
+      "education_path": {
+        "degree": "Bachelor’s degree in Electrical Engineering, Electronics, or Automation",
+        "courses": [
+          "Programmable Logic Controller (PLC)",
+          "Industrial Electrical Systems"
+        ],
+        "certificates": [
+          "Professional Electrical Engineer License",
+          "Automation Specialist Certificate"
+        ],
+        "duration": "4 years (Bachelor’s), 3 – 6 months (Certificates)",
+        "career_level": "Entry to Senior",
+        "estimated_cost": "60 – 150 million VND"
+      }
+    },
+    {
+      "title": "Civil Engineer",
+      "description": "Design, supervise, and manage construction projects such as residential buildings and infrastructure.",
+      "skills": [
+        "Structural engineering",
+        "AutoCAD, Revit",
+        "Project management",
+        "Construction supervision"
+      ],
+      "salary": "12 – 35 million VND/month",
+      "image": "https://example.com/images/civil_engineer.jpg",
+      "education_path": {
+        "degree": "Bachelor’s degree in Civil Engineering, Construction, or Transportation Engineering",
+        "courses": [
+          "Construction Project Management",
+          "Safety & Quality Management"
+        ],
+        "certificates": [
+          "Construction Supervision License",
+          "Professional Project Manager Certificate"
+        ],
+        "duration": "4 – 5 years (Bachelor’s), 1 – 2 years (Certificates)",
+        "career_level": "Mid-level",
+        "estimated_cost": "70 – 180 million VND"
+      }
+    }
+  ],
+  "Economics – Management": [
+    {
+      "title": "Marketing Specialist",
+      "description": "Plan, execute advertising campaigns and analyze market trends.",
+      "skills": [
+        "Market analysis",
+        "Content creativity",
+        "Communication",
+        "Project management"
+      ],
+      "salary": "10 – 30 million VND/month",
+      "image": "https://example.com/images/marketing_specialist.jpg",
+      "education_path": {
+        "degree": "Bachelor’s degree in Economics, Marketing, or Business Administration",
+        "courses": [
+          "Digital Marketing",
+          "SEO/SEM",
+          "Brand Management"
+        ],
+        "certificates": [
+          "Google Ads Certification",
+          "Meta/Facebook Blueprint"
+        ],
+        "duration": "4 years (Bachelor’s), 6 months (Courses)",
+        "career_level": "Entry to Mid-level",
+        "estimated_cost": "50 – 120 million VND"
+      }
+    },
+    {
+      "title": "Financial Analyst",
+      "description": "Analyze and manage corporate finances, prepare reports, and forecast risks.",
+      "skills": [
+        "Accounting",
+        "Advanced Excel",
+        "Data analysis",
+        "Capital management"
+      ],
+      "salary": "12 – 40 million VND/month",
+      "image": "https://example.com/images/financial_analyst.jpg",
+      "education_path": {
+        "degree": "Bachelor’s degree in Finance, Banking, or Accounting",
+        "courses": [
+          "Investment Analysis",
+          "Corporate Finance"
+        ],
+        "certificates": [
+          "CFA (Chartered Financial Analyst)",
+          "CPA (Certified Public Accountant)"
+        ],
+        "duration": "4 years (Bachelor’s), 1 – 2 years (Certifications)",
+        "career_level": "Mid-level",
+        "estimated_cost": "80 – 200 million VND"
+      }
+    },
+    {
+      "title": "Human Resources Specialist",
+      "description": "Manage recruitment, training, and employee benefits.",
+      "skills": [
+        "Communication",
+        "HR management",
+        "Labor law",
+        "Negotiation"
+      ],
+      "salary": "8 – 20 million VND/month",
+      "image": "https://example.com/images/hr_specialist.jpg",
+      "education_path": {
+        "degree": "Bachelor’s degree in Human Resource Management or Business Administration",
+        "courses": [
+          "HRM Training",
+          "Employee Performance Management"
+        ],
+        "certificates": [
+          "Professional HR Certificate",
+          "Labor Law Compliance Certificate"
+        ],
+        "duration": "4 years (Bachelor’s), 6 months (Courses)",
+        "career_level": "Entry to Mid-level",
+        "estimated_cost": "50 – 120 million VND"
+      }
+    }
+  ],
+  "Healthcare": [
+    {
+      "title": "General Practitioner",
+      "description": "Examine, diagnose, and treat common illnesses.",
+      "skills": [
+        "Medical knowledge",
+        "Patient communication",
+        "Quick decision-making",
+        "Research skills"
+      ],
+      "salary": "15 – 60 million VND/month",
+      "image": "https://example.com/images/general_practitioner.jpg",
+      "education_path": {
+        "degree": "Doctor of Medicine (General Medicine)",
+        "courses": [
+          "Specialist Level I/II",
+          "Clinical Practice Training"
+        ],
+        "certificates": [
+          "Medical Practice License",
+          "CPR/First Aid Certification"
+        ],
+        "duration": "6 – 8 years (Medical degree), 2 – 3 years (Specialist training)",
+        "career_level": "Professional",
+        "estimated_cost": "300 – 600 million VND"
+      }
+    },
+    {
+      "title": "Nurse",
+      "description": "Provide healthcare, monitor patient conditions, and support doctors.",
+      "skills": [
+        "Basic healthcare",
+        "Patience",
+        "Patient care",
+        "Communication"
+      ],
+      "salary": "7 – 18 million VND/month",
+      "image": "https://example.com/images/nurse.jpg",
+      "education_path": {
+        "degree": "College/University degree in Nursing",
+        "courses": [
+          "Basic & Advanced Nursing Care",
+          "Emergency Care"
+        ],
+        "certificates": [
+          "Nursing Practice License",
+          "Patient Safety Certificate"
+        ],
+        "duration": "3 – 4 years (Nursing degree), 3 – 6 months (Certificates)",
+        "career_level": "Entry to Mid-level",
+        "estimated_cost": "60 – 150 million VND"
+      }
+    },
+    {
+      "title": "Pharmacist",
+      "description": "Research, manufacture, and distribute medicines.",
+      "skills": [
+        "Chemistry",
+        "Pharmacology",
+        "Data analysis",
+        "Medicine consulting"
+      ],
+      "salary": "8 – 25 million VND/month",
+      "image": "https://example.com/images/pharmacist.jpg",
+      "education_path": {
+        "degree": "Bachelor’s degree in Pharmacy",
+        "courses": [
+          "Pharmaceutical Management",
+          "Drug Safety"
+        ],
+        "certificates": [
+          "Pharmacy Practice License",
+          "Good Pharmacy Practice Certificate"
+        ],
+        "duration": "4 – 5 years (Bachelor’s), 1 – 2 years (Certificates)",
+        "career_level": "Entry to Mid-level",
+        "estimated_cost": "80 – 200 million VND"
+      }
+    }
+  ]
+}
