@@ -31,7 +31,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await importCareerData();
+
   print("🔥 Firebase connected successfully");
 
   //khoi tao notice
