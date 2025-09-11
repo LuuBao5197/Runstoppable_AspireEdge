@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -36,6 +37,20 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (user != null) {
+        if (!user.emailVerified) {
+          // sign out để tránh giữ session
+          await FirebaseAuth.instance.signOut();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Please verify your email before logging in."),
+              backgroundColor: Colors.blue,
+            ),
+          );
+          return; // dừng tại đây
+        }
+
+        // Nếu email đã verify → cho login
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('uid', user.uid);
         await prefs.setString('email', user.email ?? '');
@@ -54,6 +69,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
     }
   }
+
 
   Future<void> _handleGoogleLogin() async {
     setState(() => _isLoading = true);
@@ -99,77 +115,6 @@ class _LoginPageState extends State<LoginPage> {
     return response.body.toString().trim();
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final googleUser = await GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId: "713857311495-mvg33eppl0s6rjiju5chh0rt02ho0ltb.apps.googleusercontent.com",
-      ).signIn();
-
-      if (googleUser == null) {
-        setState(() {
-          _isLoading = false;
-          _error = "You cancelled Google sign in.";
-        });
-        return;
-      }
-
-      final googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        setState(() => _error = "Unable to get Google ID Token.");
-        return;
-      }
-
-      // Gọi backend API thay vì Firebase
-      final response = await http.post(
-        Uri.parse(ApiConstants.loginWithGoogle),
-        body: {'idToken': idToken},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final user = data['user'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        await prefs.setString('token', data['token']);
-        await prefs.setInt('userId', user['id']);
-        await prefs.setString('fullname', user['fullname']);
-        await prefs.setString('avatar', user['avatar'] ?? '');
-        await prefs.setString('role', user['role']);
-        await prefs.setString('email', user['email']);
-
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      } else {
-        final msg = _getErrorMessage(response);
-        setState(() => _error = msg);
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        final googleSignIn = GoogleSignIn();
-        if (await googleSignIn.isSignedIn()) {
-          await googleSignIn.signOut();
-        }
-      }
-    } catch (e) {
-      print("Google login error: $e");
-      setState(() => _error = "Google login failed. Please try again.");
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
   void parseToken(String token) {
     Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
 
@@ -180,77 +125,6 @@ class _LoginPageState extends State<LoginPage> {
     print('User ID: $userId');
     print('Email: $email');
     print('Role: $role');
-  }
-
-  Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = "Please enter all required fields.");
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse(ApiConstants.login),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
-      print('Login API raw response: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final token = data['token'] as String;
-
-        final decodedToken = JwtDecoder.decode(token);
-        final userId = decodedToken['userId'];
-        final emailFromToken = decodedToken['sub'];
-        final role = decodedToken['role'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await prefs.setInt('userId', userId);
-        await prefs.setString('email', emailFromToken);
-        await prefs.setString('role', role);
-
-        // Fetch user profile
-        final profileResponse = await http.get(
-          Uri.parse("${ApiConstants.baseUrl}/users/profile/$userId"),
-          headers: {"Authorization": "Bearer $token"},
-        );
-
-        if (profileResponse.statusCode == 200) {
-          final profileData = jsonDecode(profileResponse.body);
-
-          if (profileData['fullname'] != null) {
-            await prefs.setString('fullname', profileData['fullname']);
-          }
-          if (profileData['avatar'] != null) {
-            await prefs.setString('avatar', profileData['avatar']);
-          }
-        }
-
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      } else {
-        final msg = _getErrorMessage(response);
-        setState(() => _error = msg);
-      }
-    } catch (e) {
-      print('Login error: $e');
-      setState(() => _error = "Unable to connect to server. Please try again.");
-    } finally {
-      setState(() => _isLoading = false);
-    }
   }
 
   @override

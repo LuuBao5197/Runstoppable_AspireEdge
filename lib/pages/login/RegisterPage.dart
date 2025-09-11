@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -12,7 +14,7 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _fullNameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -21,6 +23,8 @@ class _RegisterPageState extends State<RegisterPage> {
   String _role = "students"; // default chọn Students
   bool _isRegistering = false;
 
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final AuthServices _authServices = AuthServices();
 
   Future<void> _register() async {
@@ -28,37 +32,66 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isRegistering = true);
 
-    final res = await _authServices.signUpUser(
-      name: _fullNameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-      phone: _phoneController.text.trim(),
-      address: _addressController.text.trim(),
-      role: _role, // 👈 thêm role
-    );
-
-    setState(() => _isRegistering = false);
-
-    if (res == "Successfully") {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Success'),
-          content: const Text('Registration Successfully!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+    try {
+      // Tạo user mới trong Firebase Auth
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
-    } else {
-      _showDialog("Error", res);
+
+      final user = userCredential.user;
+      if (user != null) {
+        // Cập nhật displayName
+        await user.updateDisplayName(_nameController.text.trim());
+
+        // Thêm user vào Firestore collection "account"
+        await FirebaseFirestore.instance.collection("account").doc(user.uid).set({
+          "uid": user.uid,
+          "name": _nameController.text.trim(),
+          "email": user.email,
+          "phone": _phoneController.text.trim(),
+          "address": _addressController.text.trim(),
+          "role": _role,
+          "createdAt": FieldValue.serverTimestamp(),
+          "isEmailVerified": user.emailVerified, // ban đầu = false
+        });
+
+        // Gửi email xác thực
+        await user.sendEmailVerification();
+
+        setState(() => _isRegistering = false);
+
+        // Thông báo thành công
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Verify your email"),
+            content: Text(
+              "A verification link has been sent to ${user.email}. "
+                  "If you don’t see it in your inbox, please check your Spam or Promotions folder.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => _isRegistering = false);
+      String message = "Registration failed";
+      if (e.code == 'email-already-in-use') {
+        message = "This email is already registered.";
+      } else if (e.code == 'weak-password') {
+        message = "Password is too weak.";
+      }
+      _showDialog("Error", message);
     }
   }
 
@@ -80,7 +113,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _emailController.dispose();
-    _fullNameController.dispose();
+    _nameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _phoneController.dispose();
@@ -133,7 +166,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                 // --- Full Name
                 TextFormField(
-                  controller: _fullNameController,
+                  controller: _nameController,
                   decoration: const InputDecoration(
                     labelText: "Full Name",
                     prefixIcon: Icon(Icons.person_outline),
@@ -306,9 +339,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
