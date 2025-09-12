@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../utils/showToast.dart';
+import '../../../../utils/showToast.dart';
 
-class AddVideoScreen extends StatefulWidget {
-  const AddVideoScreen({super.key});
+class EditVideoScreen extends StatefulWidget {
+  final String videoId;
+  const EditVideoScreen({super.key, required this.videoId});
 
   @override
-  State<AddVideoScreen> createState() => _AddVideoScreenState();
+  State<EditVideoScreen> createState() => _EditVideoScreenState();
 }
 
-class _AddVideoScreenState extends State<AddVideoScreen> {
+class _EditVideoScreenState extends State<EditVideoScreen> {
   final firestore = FirebaseFirestore.instance;
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
@@ -36,8 +37,32 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
     "Tech Trends",
   ];
   List<String> selectedTags = [];
+  bool isLoading = true;
 
-  // --- Pick Thumbnail ---
+  @override
+  void initState() {
+    super.initState();
+    _loadVideo();
+  }
+
+  Future<void> _loadVideo() async {
+    final doc = await firestore.collection("videos").doc(widget.videoId).get();
+    if (!doc.exists) {
+      showToast("Video not found", "error");
+      Navigator.pop(context);
+      return;
+    }
+    final data = doc.data()!;
+    setState(() {
+      _titleController.text = data['title'] ?? '';
+      _descController.text = data['description'] ?? '';
+      thumbnailUrl = data['thumbnail'];
+      videoUrl = data['videoUrl'];
+      selectedTags = List<String>.from(data['tags'] ?? []);
+      isLoading = false;
+    });
+  }
+
   Future<void> pickThumbnail() async {
     final img = await _picker.pickImage(source: ImageSource.gallery);
     if (img == null) return;
@@ -49,7 +74,6 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
     }
   }
 
-  // --- Pick Video ---
   Future<void> pickVideo() async {
     final video = await _picker.pickVideo(source: ImageSource.gallery);
     if (video == null) return;
@@ -68,7 +92,6 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
     }
   }
 
-  // --- Save to Firestore ---
   Future<void> saveVideo() async {
     if (_titleController.text.isEmpty ||
         _descController.text.isEmpty ||
@@ -79,34 +102,32 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
       return;
     }
 
-    final docRef = await firestore.collection("videos").add({
+    await firestore.collection("videos").doc(widget.videoId).update({
       "title": _titleController.text.trim(),
       "description": _descController.text.trim(),
       "thumbnail": thumbnailUrl,
       "videoUrl": videoUrl,
       "tags": selectedTags,
-      "isFavorite": false,
-      "isWishlist": false,
-      "createdAt": FieldValue.serverTimestamp(),
+      "updatedAt": FieldValue.serverTimestamp(),
     });
-    await docRef.update({"id": docRef.id});
 
-    showToast("✅ Video saved", "success");
+    showToast("✅ Video updated", "success");
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
     final tagsToShow = showAllTags ? allTags : allTags.take(6).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Video")),
+      appBar: AppBar(title: const Text("Edit Video")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Thumbnail ---
             GestureDetector(
               onTap: pickThumbnail,
               child: Container(
@@ -118,41 +139,22 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                   color: Colors.grey.shade200,
                 ),
                 child: thumbnailUrl == null
-                    ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                      SizedBox(height: 8),
-                      Text("Tap to select thumbnail"),
-                    ],
-                  ),
-                )
+                    ? const Center(child: Icon(Icons.add_a_photo, size: 40))
                     : ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(thumbnailUrl!, fit: BoxFit.cover, width: double.infinity),
+                  child: Image.network(thumbnailUrl!, fit: BoxFit.cover),
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // --- Title ---
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: "Title"),
-            ),
+            TextField(controller: _titleController, decoration: const InputDecoration(labelText: "Title")),
             const SizedBox(height: 8),
-
-            // --- Description ---
             TextField(
               controller: _descController,
               decoration: const InputDecoration(labelText: "Description"),
               maxLines: 3,
             ),
             const SizedBox(height: 8),
-
-            // --- Upload Video ---
             ElevatedButton.icon(
               onPressed: pickVideo,
               icon: const Icon(Icons.video_library),
@@ -162,10 +164,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
               padding: EdgeInsets.all(8),
               child: LinearProgressIndicator(),
             ),
-
             const SizedBox(height: 16),
-
-            // --- Tags ---
             const Text("Select Tags:", style: TextStyle(fontWeight: FontWeight.bold)),
             Wrap(
               spacing: 6,
@@ -176,11 +175,8 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                   selected: selected,
                   onSelected: (val) {
                     setState(() {
-                      if (val) {
-                        selectedTags.add(tag);
-                      } else {
-                        selectedTags.remove(tag);
-                      }
+                      if (val) selectedTags.add(tag);
+                      else selectedTags.remove(tag);
                     });
                   },
                 );
@@ -191,14 +187,11 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                 onPressed: () => setState(() => showAllTags = !showAllTags),
                 child: Text(showAllTags ? "Less" : "More"),
               ),
-
             const SizedBox(height: 24),
-
-            // --- Save Button ---
             Center(
               child: ElevatedButton(
                 onPressed: saveVideo,
-                child: const Text("Save Video"),
+                child: const Text("Save Changes"),
               ),
             ),
           ],

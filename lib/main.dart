@@ -9,6 +9,7 @@ import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/career_guidance_page.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
+import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
@@ -33,7 +34,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
 
   print("🔥 Firebase connected successfully");
 
@@ -83,7 +83,6 @@ class TrackMentalHealthApp extends StatelessWidget {
           backgroundColor: Color(0xFF1E1E1E),
           foregroundColor: Colors.tealAccent,
         ),
-
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(), // Lắng nghe sự thay đổi
@@ -104,10 +103,10 @@ class TrackMentalHealthApp extends StatelessWidget {
           return const LoginPage(); // Hiển thị trang đăng nhập
         },
       ),
-        // home: CareerBankAdminPage(),
     );
   }
 }
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -126,11 +125,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const NotificationScreen(),
-    const SearchPage(),
-    const ProfilePage(),
     const ResourceMain(),
     const CareerGuidancePage(),
-    const CareerBankPage()
+    const CareerBankPage(),
+    const QuizScreen(),
   ];
 
   @override
@@ -222,10 +220,6 @@ class _MainScreenState extends State<MainScreen> {
                     icon: Icon(Icons.mood),
                     label: Text("CareerBank"),
                   ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.school),
-                    label: Text("career guidance"),
-                  ),
                 ],
               ),
             ),
@@ -268,6 +262,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.book),
             label: 'CareerBank',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_rounded),
+            label: 'Career Quizzes',
+          ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
             label: 'career guidance',
