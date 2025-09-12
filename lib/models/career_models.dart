@@ -75,6 +75,7 @@ class CareerBank {
   final List<String> skills;
   final String salaryRange;
   final EducationPath? educationPath;
+  final String? imageUrl; // thêm ảnh
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -86,24 +87,40 @@ class CareerBank {
     required this.skills,
     required this.salaryRange,
     this.educationPath,
+    this.imageUrl,
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory CareerBank.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    EducationPath? educationPath;
+    if (data['educationPath'] != null) {
+      educationPath = EducationPath.fromMap(Map<String, dynamic>.from(data['educationPath']));
+    }
+
+    DateTime createdAt = DateTime.now();
+    if (data.containsKey('createdAt') && data['createdAt'] != null) {
+      createdAt = (data['createdAt'] as Timestamp).toDate();
+    }
+
+    DateTime updatedAt = DateTime.now();
+    if (data.containsKey('updatedAt') && data['updatedAt'] != null) {
+      updatedAt = (data['updatedAt'] as Timestamp).toDate();
+    }
+
     return CareerBank(
       careerId: doc.id,
       title: data['title'] ?? '',
       industry: data['industry'] ?? '',
       description: data['description'] ?? '',
-      skills: List<String>.from(data['skills'] ?? []),
+      skills: data['skills'] != null ? List<String>.from(data['skills']) : [],
       salaryRange: data['salaryRange'] ?? '',
-      educationPath: data['educationPath'] != null
-          ? EducationPath.fromMap(Map<String, dynamic>.from(data['educationPath']))
-          : null,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      educationPath: educationPath,
+      imageUrl: data['imageUrl'],
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 
@@ -115,6 +132,7 @@ class CareerBank {
       'skills': skills,
       'salaryRange': salaryRange,
       'educationPath': educationPath?.toMap(),
+      'imageUrl': imageUrl,
     };
   }
 }
@@ -158,9 +176,6 @@ class EducationPath {
     };
   }
 }
-
-
-
 // ==================== QUIZ MODEL ====================
 class Quiz {
   final String questionId;

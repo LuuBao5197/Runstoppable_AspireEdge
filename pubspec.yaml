@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  youtube_player_flutter: ^9.1.2
   cloud_functions: ^5.6.2
   cloud_firestore: ^5.5.0
   googleapis_auth: ^2.0.0
@@ -45,8 +46,8 @@ dependencies:
   firebase_storage:
   cloudinary_flutter: ^1.1.1 # Để tương tác với Cloudinary
   cloudinary_public: ^0.23.1 # Lõi của Cloudinary
-
-
+  syncfusion_flutter_pdfviewer: ^28.1.33
+  archive: ^3.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -58,4 +59,3 @@ flutter:
   assets:
     - assets/images/
     - assets/images/LogoTMH.png
-    - assets/data/career_bank_full_20.json
