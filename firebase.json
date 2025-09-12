@@ -30,6 +30,18 @@
         "firebase-debug.*.log",
         "*.local"
       ]
+    },
+    {
+      "source": "functions-python",
+      "codebase": "python-apis",
+      "runtime": "python310",
+      "ignore": [
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+        "__pycache__"
+      ]
     }
   ]
 }

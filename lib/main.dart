@@ -120,9 +120,6 @@ class _MainScreenState extends State<MainScreen> {
   String? avatarUrl;
   bool _loadingProfile = true;
 
-
-  bool hasNewNotification = false;
-
   final List<Widget> _screens = [
     const NotificationScreen(),
     const ResourceMain(),
@@ -137,40 +134,65 @@ class _MainScreenState extends State<MainScreen> {
     _loadProfile();
   }
 
+  /// Trả về email hiện tại, ưu tiên FirebaseAuth, fallback sang SharedPreferences
+  Future<String?> _getCurrentEmail() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.email != null && user.email!.isNotEmpty) {
+      return user.email!;
+    }
 
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString("last_email");
+    if (savedEmail != null && savedEmail.isNotEmpty) return savedEmail;
+
+    return null; // Không có email
+  }
+
+  /// Load profile an toàn, không crash nếu email null
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() => _loadingProfile = false);
+      final email = await _getCurrentEmail();
+      if (email == null) {
+        print("⚠️ No email found. Cannot load profile.");
+        setState(() {
+          name = "User";
+          avatarUrl = null;
+          _loadingProfile = false;
+        });
         return;
       }
 
-      final doc = await FirebaseFirestore.instance
+      final query = await FirebaseFirestore.instance
           .collection('account')
-          .doc(user.uid)
+          .where('email', isEqualTo: email)
+          .limit(1)
           .get();
 
-      if (doc.exists) {
-        final data = doc.data()!;
+      if (query.docs.isNotEmpty) {
+        final data = query.docs.first.data();
         setState(() {
           name = data['name'] ?? "User";
           avatarUrl = data['avatarUrl'];
           _loadingProfile = false;
-          print("✅ Avatar URL: $avatarUrl");
         });
       } else {
-        setState(() => _loadingProfile = false);
+        setState(() {
+          name = "User";
+          avatarUrl = null;
+          _loadingProfile = false;
+        });
       }
     } catch (e) {
       print("Load profile error: $e");
-      setState(() => _loadingProfile = false);
+      setState(() {
+        name = "User";
+        avatarUrl = null;
+        _loadingProfile = false;
+      });
     }
   }
-
-
   void _onTabTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -179,7 +201,6 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildNavigation(BuildContext context, bool isDarkMode) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
-
     final backgroundColor = isDarkMode ? Colors.grey.shade900 : Colors.white;
     final selectedColor = Colors.tealAccent;
     final unselectedColor = isDarkMode ? Colors.white70 : Colors.grey;
@@ -189,41 +210,19 @@ class _MainScreenState extends State<MainScreen> {
         duration: const Duration(milliseconds: 400),
         width: 80,
         color: backgroundColor,
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height,
-            ),
-            child: IntrinsicHeight(
-              child: NavigationRail(
-                backgroundColor: Colors.transparent,
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: _onTabTapped,
-                labelType: NavigationRailLabelType.none,
-                selectedIconTheme: IconThemeData(color: selectedColor),
-                unselectedIconTheme: IconThemeData(color: unselectedColor),
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.notifications_active),
-                    label: Text("Notice"),
-
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
-                    label: Text("Test"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("Diary"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("CareerBank"),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        child: NavigationRail(
+          backgroundColor: Colors.transparent,
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: _onTabTapped,
+          labelType: NavigationRailLabelType.none,
+          selectedIconTheme: IconThemeData(color: selectedColor),
+          unselectedIconTheme: IconThemeData(color: unselectedColor),
+          destinations: const [
+            NavigationRailDestination(icon: Icon(Icons.notifications_active), label: Text("Notice")),
+            NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
+            NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
+            NavigationRailDestination(icon: Icon(Icons.mood), label: Text("CareerBank")),
+          ],
         ),
       );
     }
@@ -238,39 +237,14 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: Colors.transparent,
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-        ),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        elevation: 10,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_active),
-            label: 'Notice',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'Test',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications_active), label: 'Notice'),
+          BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
-          BottomNavigationBarItem( // ✅ thêm Resource tab
-            icon: Icon(Icons.book),
-            label: 'Resource',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'CareerBank',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'Career Quizzes',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'career guidance',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Resource'),
+          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'CareerBank'),
+          BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Career Quizzes'),
+          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Career Guidance'),
         ],
       ),
     );
@@ -280,172 +254,108 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
-
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      color: isDarkMode ? Colors.black : Colors.white,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-            child: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 3,
-              shadowColor: Colors.teal.withOpacity(0.3),
-              title: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 400),
-                style: TextStyle(
-                  color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-                child: const Text('Track Mental Health'),
-              ),
-              centerTitle: true,
-              iconTheme: IconThemeData(
-                color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-              ),
-              actions: [
-                Switch(
-                  value: isDarkMode,
-                  onChanged: (value) => themeProvider.toggleTheme(value),
-                  activeColor: Colors.tealAccent,
-                  inactiveThumbColor: Colors.teal[700],
-                ),
-              ],
-            ),
+    return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      appBar: AppBar(
+        title: const Text("Track Mental Health"),
+        centerTitle: true,
+        actions: [
+          Switch(
+            value: isDarkMode,
+            onChanged: themeProvider.toggleTheme,
+            activeColor: Colors.tealAccent,
           ),
-        ),
-        drawer: Drawer(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: const BoxDecoration(color: Colors.teal),
-                  child: StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('account')
-                        .doc(FirebaseAuth.instance.currentUser!.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        );
-                      }
-                      if (!snapshot.hasData || !snapshot.data!.exists) {
-                        return const Text(
-                          "No profile data",
-                          style: TextStyle(color: Colors.white),
-                        );
-                      }
-
-                      final data = snapshot.data!.data() as Map<String, dynamic>;
-                      final avatarUrl = data['avatarUrl'] as String?;
-                      final name = data['name'] ?? "User";
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                                ? NetworkImage(avatarUrl)
-                                : null,
-                            child: (avatarUrl == null || avatarUrl.isEmpty)
-                                ? const Icon(Icons.person, size: 40, color: Colors.white)
-                                : null,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Hello, $name",
-                            style: const TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.person,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Profile'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                    if (result == true) _loadProfile();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.settings,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Settings'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings Page chưa được tạo.'),
-                      ),
-                    );
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.logout,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Logout'),
-                  onTap: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
-                    // await FirebaseAuth.instance.signOut();
-                    final googleSignIn = GoogleSignIn();
-                    if (await googleSignIn.isSignedIn())
-                      await googleSignIn.signOut();
-                    if (!mounted) return;
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        body: Row(
-          children: [
-            if (isWideScreen) _buildNavigation(context, isDarkMode),
-            Expanded(
-              child: Stack(
-                children: [
-                  // Màn hình chính
-                  _screens[_selectedIndex],
-                ],
-              ),
-            ),
-          ],
-        ),
-
-        bottomNavigationBar: isWideScreen
-            ? null
-            : _buildNavigation(context, isDarkMode),
+        ],
       ),
+      drawer: Drawer(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: const BoxDecoration(color: Colors.teal),
+                child: FutureBuilder<String?>(
+                  future: _getCurrentEmail(),
+                  builder: (context, snapshotEmail) {
+                    if (!snapshotEmail.hasData) return const Center(child: CircularProgressIndicator(color: Colors.white));
+
+                    final email = snapshotEmail.data!;
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('account')
+                          .where('email', isEqualTo: email)
+                          .limit(1)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Center(
+                              child: Text("No profile data", style: TextStyle(color: Colors.white))
+                          );
+                        }
+
+                        final data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
+                        final avatar = data['avatarUrl'] as String?;
+                        final name = data['name'] ?? "User";
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 30,
+                              backgroundImage: (avatar != null && avatar.isNotEmpty) ? NetworkImage(avatar) : null,
+                              child: (avatar == null || avatar.isEmpty) ? const Icon(Icons.person, size: 40, color: Colors.white) : null,
+                            ),
+                            const SizedBox(height: 8),
+                            Text("Hello, $name", style: const TextStyle(color: Colors.white, fontSize: 18)),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              ListTile(
+                leading: Icon(Icons.person, color: isDarkMode ? Colors.tealAccent : Colors.teal[800]),
+                title: const Text('Profile'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                  if (result == true) _loadProfile();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.logout, color: isDarkMode ? Colors.tealAccent : Colors.teal[800]),
+                title: const Text('Logout'),
+                onTap: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  final lastEmail = prefs.getString("last_email");
+                  await prefs.clear();
+                  if (lastEmail != null) await prefs.setString("last_email", lastEmail);
+
+                  await FirebaseAuth.instance.signOut();
+                  final googleSignIn = GoogleSignIn();
+                  if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
+
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: Row(
+        children: [
+          if (isWideScreen) _buildNavigation(context, isDarkMode),
+          Expanded(child: _screens[_selectedIndex]),
+        ],
+      ),
+      bottomNavigationBar: isWideScreen ? null : _buildNavigation(context, isDarkMode),
     );
   }
 }
+
