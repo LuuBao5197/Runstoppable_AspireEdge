@@ -2,80 +2,132 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../utils/showToast.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../utils/showToast.dart';
 
-class AddBlogScreen extends StatefulWidget {
-  const AddBlogScreen({super.key});
+class AddVideoScreen extends StatefulWidget {
+  const AddVideoScreen({super.key});
 
   @override
-  State<AddBlogScreen> createState() => _AddBlogScreenState();
+  State<AddVideoScreen> createState() => _AddVideoScreenState();
 }
 
-class _AddBlogScreenState extends State<AddBlogScreen> {
+class _AddVideoScreenState extends State<AddVideoScreen> {
   final firestore = FirebaseFirestore.instance;
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  final _contentController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final cloudinary = CloudinaryPublic('dbghucaix', 'ml_default');
 
   String? thumbnailUrl;
+  String? videoUrl;
+  bool isUploading = false;
   bool showAllTags = false;
 
   final List<String> allTags = [
-    "Career Tips",
-    "Personal Branding",
+    "Tutorial",
+    "Career Guide",
+    "Interview Tips",
+    "Motivation",
     "Soft Skills",
-    "Resume & CV",
-    "Interview Skills",
-    "Networking",
-    "Freelancing",
-    "Remote Work",
     "Leadership",
-    "Entrepreneurship",
+    "Personal Growth",
+    "Remote Work",
+    "Freelancing",
+    "Tech Trends",
   ];
   List<String> selectedTags = [];
 
+  // --- Pick Thumbnail ---
   Future<void> pickThumbnail() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      showToast("⚠️ You must be logged in to upload thumbnail", "warning");
+      return;
+    }
+
     final img = await _picker.pickImage(source: ImageSource.gallery);
     if (img == null) return;
-    final res = await cloudinary.uploadFile(CloudinaryFile.fromFile(img.path));
-    setState(() => thumbnailUrl = res.secureUrl);
+
+    try {
+      final res = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(img.path, resourceType: CloudinaryResourceType.Image),
+      );
+      setState(() => thumbnailUrl = res.secureUrl);
+      showToast("✅ Thumbnail uploaded", "success");
+    } catch (e) {
+      showToast("❌ Upload thumbnail failed: $e", "error");
+    }
   }
 
-  Future<void> saveBlog() async {
+  // --- Pick Video ---
+  Future<void> pickVideo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      showToast("⚠️ You must be logged in to upload video", "warning");
+      return;
+    }
+
+    final video = await _picker.pickVideo(source: ImageSource.gallery);
+    if (video == null) return;
+
+    setState(() => isUploading = true);
+    try {
+      final res = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(video.path, resourceType: CloudinaryResourceType.Video),
+      );
+      setState(() {
+        videoUrl = res.secureUrl;
+        isUploading = false;
+      });
+      showToast("✅ Video uploaded", "success");
+    } catch (e) {
+      showToast("❌ Upload video failed: $e", "error");
+      setState(() => isUploading = false);
+    }
+  }
+
+  // --- Save Video ---
+  Future<void> saveVideo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      showToast("⚠️ You must be logged in to create a video", "warning");
+      return;
+    }
+
     if (_titleController.text.isEmpty ||
         _descController.text.isEmpty ||
-        _contentController.text.isEmpty ||
         thumbnailUrl == null ||
+        videoUrl == null ||
         selectedTags.isEmpty) {
       showToast("⚠️ Fill all fields", "warning");
       return;
     }
 
-    final docRef = await firestore.collection("blogs").add({
+    final docRef = await firestore.collection("videos").add({
       "title": _titleController.text.trim(),
       "description": _descController.text.trim(),
-      "content": _contentController.text.trim(),
       "thumbnail": thumbnailUrl,
+      "videoUrl": videoUrl,
       "tags": selectedTags,
       "isFavorite": false,
-      "isBookmark": false,
+      "isWishlist": false,
       "createdAt": FieldValue.serverTimestamp(),
+      "createdBy": user.uid, // thêm createdBy
     });
+
     await docRef.update({"id": docRef.id});
 
-    showToast("✅ Blog saved", "success");
-    Navigator.pop(context); // quay lại BlogScreen
+    showToast("✅ Video saved", "success");
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Chỉ lấy 6 tag đầu tiên nếu showAllTags = false
     final tagsToShow = showAllTags ? allTags : allTags.take(6).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Blog")),
+      appBar: AppBar(title: const Text("Add Video")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -97,8 +149,7 @@ class _AddBlogScreenState extends State<AddBlogScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_a_photo,
-                          size: 40, color: Colors.grey),
+                      Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
                       SizedBox(height: 8),
                       Text("Tap to select thumbnail"),
                     ],
@@ -114,7 +165,6 @@ class _AddBlogScreenState extends State<AddBlogScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
 
             // --- Title ---
@@ -130,21 +180,23 @@ class _AddBlogScreenState extends State<AddBlogScreen> {
               decoration: const InputDecoration(labelText: "Description"),
               maxLines: 3,
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 8),
 
-            // --- Content ---
-            TextField(
-              controller: _contentController,
-              decoration: const InputDecoration(labelText: "Content"),
-              maxLines: 3,
-              keyboardType: TextInputType.multiline,
+            // --- Upload Video ---
+            ElevatedButton.icon(
+              onPressed: pickVideo,
+              icon: const Icon(Icons.video_library),
+              label: Text(videoUrl != null ? "Video Selected" : "Select MP4 Video"),
             ),
-
-            const SizedBox(height: 5),
+            if (isUploading)
+              const Padding(
+                padding: EdgeInsets.all(8),
+                child: LinearProgressIndicator(),
+              ),
+            const SizedBox(height: 16),
 
             // --- Tags ---
-            const Text("Select Tags:",
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text("Select Tags:", style: TextStyle(fontWeight: FontWeight.bold)),
             Wrap(
               spacing: 6,
               children: tagsToShow.map((tag) {
@@ -164,23 +216,18 @@ class _AddBlogScreenState extends State<AddBlogScreen> {
                 );
               }).toList(),
             ),
-
-            // --- Nút More/Less ---
             if (allTags.length > 6)
               TextButton(
-                onPressed: () {
-                  setState(() => showAllTags = !showAllTags);
-                },
+                onPressed: () => setState(() => showAllTags = !showAllTags),
                 child: Text(showAllTags ? "Less" : "More"),
               ),
-
             const SizedBox(height: 24),
 
-            // --- Save button ---
+            // --- Save Button ---
             Center(
               child: ElevatedButton(
-                onPressed: saveBlog,
-                child: const Text("Save Blog"),
+                onPressed: saveVideo,
+                child: const Text("Save Video"),
               ),
             ),
           ],
