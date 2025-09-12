@@ -8,8 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
+import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
-import 'package:trackmentalhealth/pages/Resource/resource_admin.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -116,11 +116,9 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     // const SendNoticePage(),
     const NotificationScreen(),
-    const SearchPage(),
-    const ProfilePage(),
     const ResourceMain(),
-    const ResourceAdminMain(),
-    const CareerBankPage()
+    const CareerBankPage(),
+    const QuizScreen(),
   ];
 
   @override
@@ -201,16 +199,12 @@ class _MainScreenState extends State<MainScreen> {
 
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
-                    label: Text("Test"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("Diary"),
-                  ),
-                  NavigationRailDestination(
                     icon: Icon(Icons.mood),
                     label: Text("CareerBank"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.quiz),
+                    label: Text("Career Quizzes"),
                   ),
                 ],
               ),
@@ -241,10 +235,6 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.notifications_active),
             label: 'Notice',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'Test',
-          ),
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
@@ -254,6 +244,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.book),
             label: 'CareerBank',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_rounded),
+            label: 'Career Quizzes',
+          ),
+
         ],
       ),
     );
