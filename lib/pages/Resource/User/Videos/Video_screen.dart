@@ -1,30 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../tag_filter_dialog.dart';
-import 'add_ebook_screen.dart';
-import 'detail_ebook_screen.dart';
- // import màn hình detail
+import '../../tag_filter_dialog.dart';
+import '../../Admin/Videos/add_video_screen.dart';
+import 'detail_video_screen.dart';
 
-class EbookScreen extends StatefulWidget {
-  const EbookScreen({super.key});
+class VideoScreen extends StatefulWidget {
+  const VideoScreen({super.key});
 
   @override
-  State<EbookScreen> createState() => _EbookScreenState();
+  State<VideoScreen> createState() => _VideoScreenState();
 }
 
-class _EbookScreenState extends State<EbookScreen> {
+class _VideoScreenState extends State<VideoScreen> {
   final firestore = FirebaseFirestore.instance;
   String searchQuery = "";
 
+  // filter tags
   final List<String> allTags = [
-    "Novel",
+    "Tutorial",
+    "Interview",
     "Education",
-    "Career Guide",
     "Motivation",
-    "Soft Skills",
-    "Leadership",
-    "Personal Growth",
-    "Tech",
+    "Lifestyle",
+    "Entertainment",
   ];
   Map<String, int> selectedTags = {};
 
@@ -44,8 +42,11 @@ class _EbookScreenState extends State<EbookScreen> {
         currentSelection: selectedTags,
       ),
     );
+
     if (result != null) {
-      setState(() => selectedTags = result);
+      setState(() {
+        selectedTags = result;
+      });
     }
   }
 
@@ -55,14 +56,16 @@ class _EbookScreenState extends State<EbookScreen> {
       appBar: AppBar(
         title: TextField(
           decoration: const InputDecoration(
-            hintText: "Search ebooks...",
+            hintText: "Search videos...",
             border: InputBorder.none,
             prefixIcon: Icon(Icons.search, color: Colors.black),
           ),
           style: const TextStyle(color: Colors.black),
           cursorColor: Colors.black,
           onChanged: (value) {
-            setState(() => searchQuery = value.toLowerCase());
+            setState(() {
+              searchQuery = value.toLowerCase();
+            });
           },
         ),
         actions: [
@@ -74,18 +77,26 @@ class _EbookScreenState extends State<EbookScreen> {
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: firestore
-            .collection("ebooks")
+            .collection("videos")
             .orderBy("createdAt", descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
           final docs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final tags = List<String>.from(data["tags"] ?? []);
 
-            final include = selectedTags.entries.where((e) => e.value == 1).map((e) => e.key).toList();
-            final exclude = selectedTags.entries.where((e) => e.value == -1).map((e) => e.key).toList();
+            final include = selectedTags.entries
+                .where((e) => e.value == 1)
+                .map((e) => e.key)
+                .toList();
+            final exclude = selectedTags.entries
+                .where((e) => e.value == -1)
+                .map((e) => e.key)
+                .toList();
 
             if (include.isNotEmpty && !include.any(tags.contains)) return false;
             if (exclude.isNotEmpty && exclude.any(tags.contains)) return false;
@@ -94,19 +105,19 @@ class _EbookScreenState extends State<EbookScreen> {
               final title = (data["title"] ?? "").toString().toLowerCase();
               if (!title.contains(searchQuery)) return false;
             }
+
             return true;
           }).toList();
 
           return ListView(
             children: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              return GestureDetector(
+              return InkWell(
                 onTap: () {
-                  // Khi bấm mở detail
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => EbookDetailScreen(ebookId: doc.id),
+                      builder: (_) => VideoDetailScreen(videoId: doc.id),
                     ),
                   );
                 },
@@ -152,7 +163,7 @@ class _EbookScreenState extends State<EbookScreen> {
                                 data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
                                 color: Colors.red,
                               ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
+                              onPressed: () => firestore.collection("videos").doc(doc.id).update({
                                 "isFavorite": !(data["isFavorite"] ?? false),
                               }),
                             ),
@@ -160,7 +171,7 @@ class _EbookScreenState extends State<EbookScreen> {
                               icon: Icon(
                                 data["isBookmark"] == true ? Icons.bookmark : Icons.bookmark_border,
                               ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
+                              onPressed: () => firestore.collection("videos").doc(doc.id).update({
                                 "isBookmark": !(data["isBookmark"] ?? false),
                               }),
                             ),
@@ -177,7 +188,10 @@ class _EbookScreenState extends State<EbookScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEbookScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddVideoScreen()),
+          );
         },
         child: const Icon(Icons.add),
       ),

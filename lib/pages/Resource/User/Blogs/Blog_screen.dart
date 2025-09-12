@@ -1,30 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../tag_filter_dialog.dart';
-import 'add_video_screen.dart';
-import 'detail_video_screen.dart';
+import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../utils/showToast.dart';
+import '../../Admin/Blogs/add_blog_screen.dart';
+import '../../tag_filter_dialog.dart';
+import 'detail_blog_screen.dart';
+import 'dart:math';
 
-class VideoScreen extends StatefulWidget {
-  const VideoScreen({super.key});
+class BlogScreen extends StatefulWidget {
+  const BlogScreen({super.key});
 
   @override
-  State<VideoScreen> createState() => _VideoScreenState();
+  State<BlogScreen> createState() => _BlogScreenState();
 }
 
-class _VideoScreenState extends State<VideoScreen> {
+class _BlogScreenState extends State<BlogScreen> {
   final firestore = FirebaseFirestore.instance;
-  String searchQuery = "";
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  final cloudinary = CloudinaryPublic('dbghucaix', 'ml_default');
+
+  String? thumbnailUrl;
+  String searchQuery = ""; // query để search
 
   // filter tags
   final List<String> allTags = [
-    "Tutorial",
-    "Interview",
-    "Education",
-    "Motivation",
-    "Lifestyle",
-    "Entertainment",
+    "Career Tips",
+    "Personal Branding",
+    "Resume & CV",
+    "Interview Skills",
+    "Networking",
+    "Freelancing",
+    "Remote Work",
+    "Soft Skills",
+    "Leadership",
+    "Entrepreneurship",
   ];
-  Map<String, int> selectedTags = {};
+  Map<String, int> selectedTags = {}; // tag → 0 (none), 1 (include), -1 (exclude)
 
   @override
   void initState() {
@@ -32,6 +46,77 @@ class _VideoScreenState extends State<VideoScreen> {
     for (var t in allTags) {
       selectedTags[t] = 0;
     }
+  }
+
+  Future<void> pickThumbnail() async {
+    final img = await _picker.pickImage(source: ImageSource.gallery);
+    if (img == null) return;
+    final res = await cloudinary.uploadFile(CloudinaryFile.fromFile(img.path));
+    setState(() => thumbnailUrl = res.secureUrl);
+  }
+
+  Future<void> saveBlog() async {
+    if (_titleController.text.isEmpty ||
+        _descController.text.isEmpty ||
+        thumbnailUrl == null) {
+      showToast("⚠️ Fill all fields", "warning");
+      return;
+    }
+    await firestore.collection("blogs").add({
+      "title": _titleController.text.trim(),
+      "description": _descController.text.trim(),
+      "thumbnail": thumbnailUrl,
+      "tags": ["Food", "Education"],
+      "isFavorite": false,
+      "isBookmark": false,
+      "createdAt": FieldValue.serverTimestamp(),
+    });
+    showToast("✅ Blog saved", "success");
+    _titleController.clear();
+    _descController.clear();
+    setState(() => thumbnailUrl = null);
+  }
+
+  void showAddBlogDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Add Blog"),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: "Title"),
+              ),
+              TextField(
+                controller: _descController,
+                decoration: const InputDecoration(labelText: "Description"),
+              ),
+              ElevatedButton.icon(
+                onPressed: pickThumbnail,
+                icon: const Icon(Icons.image),
+                label: const Text("Select Thumbnail"),
+              ),
+              if (thumbnailUrl != null)
+                Image.network(thumbnailUrl!, height: 100),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              saveBlog();
+              Navigator.pop(context);
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
   }
 
   void openFilterDialog() async {
@@ -47,6 +132,18 @@ class _VideoScreenState extends State<VideoScreen> {
       setState(() {
         selectedTags = result;
       });
+
+      final include = selectedTags.entries
+          .where((e) => e.value == 1)
+          .map((e) => e.key)
+          .toList();
+      final exclude = selectedTags.entries
+          .where((e) => e.value == -1)
+          .map((e) => e.key)
+          .toList();
+
+      debugPrint("Include: $include");
+      debugPrint("Exclude: $exclude");
     }
   }
 
@@ -56,7 +153,7 @@ class _VideoScreenState extends State<VideoScreen> {
       appBar: AppBar(
         title: TextField(
           decoration: const InputDecoration(
-            hintText: "Search videos...",
+            hintText: "Search blogs...",
             border: InputBorder.none,
             prefixIcon: Icon(Icons.search, color: Colors.black),
           ),
@@ -76,15 +173,13 @@ class _VideoScreenState extends State<VideoScreen> {
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestore
-            .collection("videos")
-            .orderBy("createdAt", descending: true)
-            .snapshots(),
+        stream: firestore.collection("blogs").snapshots(), // ko orderBy
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
+          // Convert to list và shuffle
           final docs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final tags = List<String>.from(data["tags"] ?? []);
@@ -109,6 +204,8 @@ class _VideoScreenState extends State<VideoScreen> {
             return true;
           }).toList();
 
+          docs.shuffle(Random()); // <- shuffle mỗi lần build
+
           return ListView(
             children: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
@@ -117,7 +214,7 @@ class _VideoScreenState extends State<VideoScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => VideoDetailScreen(videoId: doc.id),
+                      builder: (_) => BlogDetailScreen(blogId: doc.id),
                     ),
                   );
                 },
@@ -147,12 +244,17 @@ class _VideoScreenState extends State<VideoScreen> {
                                 children: [
                                   Text(
                                     data["title"] ?? "",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     data["description"] ?? "",
-                                    maxLines: 2,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
@@ -163,7 +265,7 @@ class _VideoScreenState extends State<VideoScreen> {
                                 data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
                                 color: Colors.red,
                               ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
+                              onPressed: () => firestore.collection("blogs").doc(doc.id).update({
                                 "isFavorite": !(data["isFavorite"] ?? false),
                               }),
                             ),
@@ -171,7 +273,7 @@ class _VideoScreenState extends State<VideoScreen> {
                               icon: Icon(
                                 data["isBookmark"] == true ? Icons.bookmark : Icons.bookmark_border,
                               ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
+                              onPressed: () => firestore.collection("blogs").doc(doc.id).update({
                                 "isBookmark": !(data["isBookmark"] ?? false),
                               }),
                             ),
@@ -190,7 +292,7 @@ class _VideoScreenState extends State<VideoScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddVideoScreen()),
+            MaterialPageRoute(builder: (_) => const AddBlogScreen()),
           );
         },
         child: const Icon(Icons.add),

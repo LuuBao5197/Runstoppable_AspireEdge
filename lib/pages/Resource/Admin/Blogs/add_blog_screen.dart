@@ -1,94 +1,127 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:archive/archive_io.dart';
+import 'package:xml/xml.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../utils/showToast.dart';
 
-import '../../../utils/showToast.dart';
-
-class AddEbookScreen extends StatefulWidget {
-  const AddEbookScreen({super.key});
+class AddBlogScreen extends StatefulWidget {
+  const AddBlogScreen({super.key});
 
   @override
-  State<AddEbookScreen> createState() => _AddEbookScreenState();
+  State<AddBlogScreen> createState() => _AddBlogScreenState();
 }
 
-class _AddEbookScreenState extends State<AddEbookScreen> {
+class _AddBlogScreenState extends State<AddBlogScreen> {
   final firestore = FirebaseFirestore.instance;
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
+  final _contentController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final cloudinary = CloudinaryPublic('dbghucaix', 'ml_default');
 
   String? thumbnailUrl;
-  List<String> photos = [];
-  bool isUploading = false;
   bool showAllTags = false;
 
   final List<String> allTags = [
-    "Novel",
-    "Education",
-    "Career Guide",
-    "Motivation",
+    "Career Tips",
+    "Personal Branding",
     "Soft Skills",
+    "Resume & CV",
+    "Interview Skills",
+    "Networking",
+    "Freelancing",
+    "Remote Work",
     "Leadership",
-    "Personal Growth",
-    "Tech",
+    "Entrepreneurship",
   ];
   List<String> selectedTags = [];
 
-  // Pick thumbnail
+  // --- Pick thumbnail ---
   Future<void> pickThumbnail() async {
     final img = await _picker.pickImage(source: ImageSource.gallery);
     if (img == null) return;
-    try {
-      final res = await cloudinary.uploadFile(CloudinaryFile.fromFile(img.path));
-      setState(() => thumbnailUrl = res.secureUrl);
-    } catch (e) {
-      showToast("❌ Upload thumbnail failed", "error");
-    }
+    final res = await cloudinary.uploadFile(CloudinaryFile.fromFile(img.path));
+    setState(() => thumbnailUrl = res.secureUrl);
   }
 
-  // Pick multiple photos
-  Future<void> pickPhotos() async {
-    final imgs = await _picker.pickMultiImage();
-    if (imgs.isEmpty) return;
-    setState(() => isUploading = true);
-    try {
-      for (var img in imgs) {
-        final res = await cloudinary.uploadFile(CloudinaryFile.fromFile(img.path));
-        photos.add(res.secureUrl);
+  // --- Import TXT or DOCX ---
+  Future<void> importContentFromFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['txt', 'docx'],
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = File(result.files.single.path!);
+    final ext = file.path.split('.').last.toLowerCase();
+
+    if (ext == 'txt') {
+      final content = await file.readAsString();
+      setState(() => _contentController.text = content);
+    } else if (ext == 'docx') {
+      try {
+        final bytes = file.readAsBytesSync();
+        final archive = ZipDecoder().decodeBytes(bytes);
+        String text = '';
+        for (final file in archive) {
+          if (file.name == "word/document.xml") {
+            final xmlString = String.fromCharCodes(file.content);
+            final document = XmlDocument.parse(xmlString);
+
+            document.findAllElements('w:p').forEach((pNode) {
+              final paragraphText =
+              pNode.findAllElements('w:t').map((t) => t.text).join();
+              text += paragraphText + '\n';
+            });
+
+            break;
+          }
+        }
+        setState(() => _contentController.text = text.trim());
+      } catch (e) {
+        showToast("Failed to read DOCX file: $e", "error");
       }
-      setState(() => isUploading = false);
-    } catch (e) {
-      showToast("❌ Upload photos failed", "error");
-      setState(() => isUploading = false);
     }
   }
 
-  // Save ebook
-  Future<void> saveEbook() async {
+  // --- Save blog ---
+  Future<void> saveBlog() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      showToast("⚠️ You must be logged in to create a blog", "warning");
+      return;
+    }
+
     if (_titleController.text.isEmpty ||
         _descController.text.isEmpty ||
+        _contentController.text.isEmpty ||
         thumbnailUrl == null ||
-        photos.isEmpty ||
         selectedTags.isEmpty) {
       showToast("⚠️ Fill all fields", "warning");
       return;
     }
 
-    final docRef = await firestore.collection("ebooks").add({
+    final docRef = await firestore.collection("blogs").add({
       "title": _titleController.text.trim(),
       "description": _descController.text.trim(),
+      "content": _contentController.text.trim(),
       "thumbnail": thumbnailUrl,
-      "photos": photos,
       "tags": selectedTags,
       "isFavorite": false,
       "isBookmark": false,
       "createdAt": FieldValue.serverTimestamp(),
+      "createdBy": user.uid, // thêm trường createdBy
     });
+
     await docRef.update({"id": docRef.id});
 
-    showToast("✅ Ebook saved", "success");
+    showToast("✅ Blog saved", "success");
     Navigator.pop(context);
   }
 
@@ -97,13 +130,13 @@ class _AddEbookScreenState extends State<AddEbookScreen> {
     final tagsToShow = showAllTags ? allTags : allTags.take(6).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Ebook")),
+      appBar: AppBar(title: const Text("Add Blog")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail
+            // --- Thumbnail ---
             GestureDetector(
               onTap: pickThumbnail,
               child: Container(
@@ -127,84 +160,54 @@ class _AddEbookScreenState extends State<AddEbookScreen> {
                 )
                     : ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(thumbnailUrl!, fit: BoxFit.cover),
+                  child: Image.network(
+                    thumbnailUrl!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
 
-            // Title
+            // --- Title ---
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(labelText: "Title"),
             ),
             const SizedBox(height: 8),
 
-            // Description
+            // --- Description ---
             TextField(
               controller: _descController,
               decoration: const InputDecoration(labelText: "Description"),
               maxLines: 3,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 5),
 
-            // Photos
-            ElevatedButton.icon(
-              onPressed: pickPhotos,
-              icon: const Icon(Icons.collections),
-              label: const Text("Select Ebook Pages"),
-            ),
-            if (isUploading) const LinearProgressIndicator(),
-            if (photos.isNotEmpty)
-              SizedBox(
-                height: 120,
-                child: ReorderableListView(
-                  scrollDirection: Axis.horizontal,
-                  onReorder: (oldIndex, newIndex) {
-                    setState(() {
-                      if (newIndex > oldIndex) newIndex--;
-                      final item = photos.removeAt(oldIndex);
-                      photos.insert(newIndex, item);
-                    });
-                  },
-                  children: photos.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final url = entry.value;
-                    return Stack(
-                      key: ValueKey(url),
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.all(4),
-                          child: Image.network(url, width: 100, height: 100, fit: BoxFit.cover),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                photos.removeAt(index);
-                              });
-                            },
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.black54,
-                              ),
-                              child: const Icon(Icons.close, color: Colors.white, size: 18),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
+            // --- Content + Import button ---
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _contentController,
+                    decoration: const InputDecoration(labelText: "Content"),
+                    maxLines: 8,
+                    keyboardType: TextInputType.multiline,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: importContentFromFile,
+                  icon: const Icon(Icons.upload_file),
+                  label: const Text("Import"),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
 
-            const SizedBox(height: 16),
-
-            // Tags
+            // --- Tags ---
             const Text("Select Tags:", style: TextStyle(fontWeight: FontWeight.bold)),
             Wrap(
               spacing: 6,
@@ -225,6 +228,7 @@ class _AddEbookScreenState extends State<AddEbookScreen> {
                 );
               }).toList(),
             ),
+
             if (allTags.length > 6)
               TextButton(
                 onPressed: () => setState(() => showAllTags = !showAllTags),
@@ -233,10 +237,11 @@ class _AddEbookScreenState extends State<AddEbookScreen> {
 
             const SizedBox(height: 24),
 
+            // --- Save button ---
             Center(
               child: ElevatedButton(
-                onPressed: saveEbook,
-                child: const Text("Save Ebook"),
+                onPressed: saveBlog,
+                child: const Text("Save Blog"),
               ),
             ),
           ],

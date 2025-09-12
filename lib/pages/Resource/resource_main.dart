@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'Blogs/blog_screen.dart';
-import 'Videos/video_screen.dart';
-import 'Ebooks/ebook_screen.dart';
+import 'User/Blogs/Blog_screen.dart';
+import 'User/Ebooks/Ebook_screen.dart';
+import 'User/Videos/Video_screen.dart';
+
 
 class ResourceMain extends StatefulWidget {
   const ResourceMain({super.key});

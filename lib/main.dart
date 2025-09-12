@@ -9,6 +9,7 @@ import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
+import 'package:trackmentalhealth/pages/Resource/resource_admin.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
@@ -118,6 +119,7 @@ class _MainScreenState extends State<MainScreen> {
     const SearchPage(),
     const ProfilePage(),
     const ResourceMain(),
+    const ResourceAdminMain(),
     const CareerBankPage()
   ];
 
