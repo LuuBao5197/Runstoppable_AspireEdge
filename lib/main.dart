@@ -11,6 +11,7 @@ import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/ResourceScreen.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
+import 'package:trackmentalhealth/pages/career_management_page.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
 import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
@@ -79,30 +80,31 @@ class TrackMentalHealthApp extends StatelessWidget {
           backgroundColor: Color(0xFF1E1E1E),
           foregroundColor: Colors.tealAccent,
         ),
+
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(), // Lắng nghe sự thay đổi
-        builder: (context, snapshot) {
-          // Trong khi chờ kết nối, hiển thị màn hình chờ
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          // Nếu có dữ liệu người dùng (đã đăng nhập)
-          if (snapshot.hasData) {
-            return const MainScreen(); // Đi thẳng vào màn hình chính
-          }
-          // Nếu không có dữ liệu (chưa đăng nhập)
-          return const LoginPage(); // Hiển thị trang đăng nhập
-        },
-      ),
+      // home: StreamBuilder<User?>(
+      //   stream: FirebaseAuth.instance.authStateChanges(), // Lắng nghe sự thay đổi
+      //   builder: (context, snapshot) {
+      //     // Trong khi chờ kết nối, hiển thị màn hình chờ
+      //     if (snapshot.connectionState == ConnectionState.waiting) {
+      //       return const Scaffold(
+      //         body: Center(
+      //           child: CircularProgressIndicator(),
+      //         ),
+      //       );
+      //     }
+      //     // Nếu có dữ liệu người dùng (đã đăng nhập)
+      //     if (snapshot.hasData) {
+      //       return const MainScreen(); // Đi thẳng vào màn hình chính
+      //     }
+      //     // Nếu không có dữ liệu (chưa đăng nhập)
+      //     return const LoginPage(); // Hiển thị trang đăng nhập
+      //   },
+      // ),
+      home: CareerManagementPage(),
     );
   }
 }
-
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 

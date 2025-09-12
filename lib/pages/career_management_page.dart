@@ -13,7 +13,7 @@ class CareerManagementPage extends StatefulWidget {
 
 class _CareerManagementPageState extends State<CareerManagementPage> {
   int _selectedIndex = 0;
-  
+
   final List<Widget> _screens = [
     const UsersTab(),
     const CareersTab(),
@@ -77,21 +77,21 @@ class UsersTab extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              
+
               if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
-              
+
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No users found'));
               }
-              
+
               return ListView.builder(
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   final doc = snapshot.data!.docs[index];
                   final user = User.fromFirestore(doc);
-                  
+
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: ListTile(
@@ -187,7 +187,7 @@ class UsersTab extends StatelessWidget {
                     phone: phoneController.text,
                     tier: selectedTier,
                   );
-                  
+
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -240,35 +240,51 @@ class CareersTab extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              
+
               if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
-              
+
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No careers found'));
               }
-              
+
               return ListView.builder(
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   final doc = snapshot.data!.docs[index];
                   final career = CareerBank.fromFirestore(doc);
-                  
+
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: ListTile(
-                      leading: const Icon(Icons.work, color: Colors.teal),
-                      title: Text(career.title),
-                      subtitle: Column(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            career.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal,
+                            ),
+                          ),
                           Text('Industry: ${career.industry}'),
                           Text('Salary: ${career.salaryRange}'),
-                          Text('Skills: ${career.skills.take(3).join(', ')}${career.skills.length > 3 ? '...' : ''}'),
+                          Text('Skills: ${career.skills.join(", ")}'),
+                          const SizedBox(height: 4),
+                          const Text("🎓 Education Path:"),
+                          if (career.educationPath != null) ...[
+                            Text("   • Degree: ${career.educationPath!.degree}"),
+                            Text("   • Courses: ${career.educationPath!.courses.join(", ")}"),
+                            Text("   • Certificates: ${career.educationPath!.certificates.join(", ")}"),
+                            Text("   • Duration: ${career.educationPath!.duration}"),
+                            Text("   • Level: ${career.educationPath!.careerLevel}"),
+                            Text("   • Cost: ${career.educationPath!.estimatedCost}"),
+                          ],
                         ],
                       ),
-                      isThreeLine: true,
                     ),
                   );
                 },
@@ -286,7 +302,14 @@ class CareersTab extends StatelessWidget {
     final descriptionController = TextEditingController();
     final skillsController = TextEditingController();
     final salaryController = TextEditingController();
-    final educationController = TextEditingController();
+
+    // education_path controllers
+    final degreeController = TextEditingController();
+    final coursesController = TextEditingController();
+    final certificatesController = TextEditingController();
+    final durationController = TextEditingController();
+    final levelController = TextEditingController();
+    final costController = TextEditingController();
 
     showDialog(
       context: context,
@@ -296,31 +319,20 @@ class CareersTab extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              TextField(
-                controller: industryController,
-                decoration: const InputDecoration(labelText: 'Industry'),
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 3,
-              ),
-              TextField(
-                controller: skillsController,
-                decoration: const InputDecoration(labelText: 'Skills (comma separated)'),
-              ),
-              TextField(
-                controller: salaryController,
-                decoration: const InputDecoration(labelText: 'Salary Range'),
-              ),
-              TextField(
-                controller: educationController,
-                decoration: const InputDecoration(labelText: 'Education Path'),
-              ),
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(controller: industryController, decoration: const InputDecoration(labelText: 'Industry')),
+              TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+              TextField(controller: skillsController, decoration: const InputDecoration(labelText: 'Skills (comma separated)')),
+              TextField(controller: salaryController, decoration: const InputDecoration(labelText: 'Salary Range')),
+
+              const Divider(),
+              const Text("Education Path", style: TextStyle(fontWeight: FontWeight.bold)),
+              TextField(controller: degreeController, decoration: const InputDecoration(labelText: 'Degree')),
+              TextField(controller: coursesController, decoration: const InputDecoration(labelText: 'Courses (comma separated)')),
+              TextField(controller: certificatesController, decoration: const InputDecoration(labelText: 'Certificates (comma separated)')),
+              TextField(controller: durationController, decoration: const InputDecoration(labelText: 'Duration')),
+              TextField(controller: levelController, decoration: const InputDecoration(labelText: 'Career Level')),
+              TextField(controller: costController, decoration: const InputDecoration(labelText: 'Estimated Cost')),
             ],
           ),
         ),
@@ -338,9 +350,17 @@ class CareersTab extends StatelessWidget {
                   description: descriptionController.text,
                   skills: skillsController.text.split(',').map((s) => s.trim()).toList(),
                   salaryRange: salaryController.text,
-                  educationPath: educationController.text,
+                  educationPath: EducationPath(  // <-- tạo object EducationPath
+                    degree: degreeController.text,
+                    courses: coursesController.text.split(',').map((s) => s.trim()).toList(),
+                    certificates: certificatesController.text.split(',').map((s) => s.trim()).toList(),
+                    duration: durationController.text,
+                    careerLevel: levelController.text,
+                    estimatedCost: costController.text,
+                  ),
                 );
-                
+
+
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -362,6 +382,7 @@ class CareersTab extends StatelessWidget {
     );
   }
 }
+
 
 // ==================== QUIZ TAB ====================
 class QuizTab extends StatelessWidget {
@@ -392,21 +413,21 @@ class QuizTab extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              
+
               if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
-              
+
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No quiz questions found'));
               }
-              
+
               return ListView.builder(
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   final doc = snapshot.data!.docs[index];
                   final quiz = Quiz.fromFirestore(doc);
-                  
+
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Padding(
@@ -568,7 +589,7 @@ class QuizTab extends StatelessWidget {
                   optionD: optionDController.text,
                   scoreMap: scoreMap,
                 );
-                
+
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -620,30 +641,30 @@ class TestimonialsTab extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              
+
               if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
-              
+
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No testimonials found'));
               }
-              
+
               return ListView.builder(
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   final doc = snapshot.data!.docs[index];
                   final testimonial = Testimonial.fromFirestore(doc);
-                  
+
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundImage: testimonial.imageUrl.isNotEmpty 
-                            ? NetworkImage(testimonial.imageUrl) 
+                        backgroundImage: testimonial.imageUrl.isNotEmpty
+                            ? NetworkImage(testimonial.imageUrl)
                             : null,
-                        child: testimonial.imageUrl.isEmpty 
-                            ? const Icon(Icons.person) 
+                        child: testimonial.imageUrl.isEmpty
+                            ? const Icon(Icons.person)
                             : null,
                       ),
                       title: Text(testimonial.name),
@@ -655,7 +676,7 @@ class TestimonialsTab extends StatelessWidget {
                             backgroundColor: Colors.amber,
                           ),
                           Text(
-                            testimonial.story.length > 100 
+                            testimonial.story.length > 100
                                 ? '${testimonial.story.substring(0, 100)}...'
                                 : testimonial.story,
                           ),
@@ -721,7 +742,7 @@ class TestimonialsTab extends StatelessWidget {
                   tier: tierController.text,
                   story: storyController.text,
                 );
-                
+
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -756,21 +777,21 @@ class FeedbacksTab extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
-        
+
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(child: Text('No feedbacks found'));
         }
-        
+
         return ListView.builder(
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
             final doc = snapshot.data!.docs[index];
             final feedback = Feedback.fromFirestore(doc);
-            
+
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: ListTile(
@@ -782,7 +803,7 @@ class FeedbacksTab extends StatelessWidget {
                     Text(feedback.email),
                     Text(feedback.phone),
                     Text(
-                      feedback.message.length > 100 
+                      feedback.message.length > 100
                           ? '${feedback.message.substring(0, 100)}...'
                           : feedback.message,
                     ),

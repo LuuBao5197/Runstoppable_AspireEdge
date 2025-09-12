@@ -65,13 +65,14 @@ class CareerFirebaseService {
   // ==================== CAREER BANK OPERATIONS ====================
   
   /// Tạo career mới
+  // createCareer mới
   static Future<void> createCareer({
     required String title,
     required String industry,
     required String description,
     required List<String> skills,
     required String salaryRange,
-    required String educationPath,
+    required EducationPath educationPath, // <-- đổi từ String sang EducationPath
   }) async {
     try {
       await _firestore.collection('careers').add({
@@ -80,7 +81,7 @@ class CareerFirebaseService {
         'description': description,
         'skills': skills,
         'salaryRange': salaryRange,
-        'educationPath': educationPath,
+        'educationPath': educationPath.toMap(), // <-- convert object thành Map
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
