@@ -1,15 +1,10 @@
-import 'dart:convert';
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:trackmentalhealth/pages/login/google_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,236 +16,105 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = FirebaseServices();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   bool _isObscure = true;
   bool _isLoading = false;
   String? _error;
 
+  // --- Email/Password Login
   Future<void> _handleEmailLogin() async {
-    setState(() => _isLoading = true);
-    try {
-      final user = await _authService.signInWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-
-      if (user != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('uid', user.uid);
-        await prefs.setString('email', user.email ?? '');
-        await prefs.setString('name', user.displayName ?? '');
-        await prefs.setString('photoUrl', user.photoURL ?? '');
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Login failed: $e")));
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _handleGoogleLogin() async {
-    setState(() => _isLoading = true);
-    try {
-      final user = await _authService.signInWithGoogle();
-
-      if (user != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('uid', user.uid);
-        await prefs.setString('email', user.email ?? '');
-        await prefs.setString('name', user.displayName ?? '');
-        await prefs.setString('photoUrl', user.photoURL ?? '');
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Google login failed: $e")));
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  /// Extracts an error message safely from API responses.
-  String _getErrorMessage(http.Response response) {
-    try {
-      final parsed = jsonDecode(response.body);
-      if (parsed is Map<String, dynamic>) {
-        for (final key in ['message', 'error', 'detail', 'msg']) {
-          final value = parsed[key];
-          if (value is String && value.trim().isNotEmpty) return value.trim();
-        }
-      }
-      if (parsed is String && parsed.trim().isNotEmpty) {
-        return parsed.trim();
-      }
-    } catch (_) {
-      // Ignore JSON parsing errors
-    }
-    return response.body.toString().trim();
-  }
-
-  Future<void> _signInWithGoogle() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final googleUser = await GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId: "713857311495-mvg33eppl0s6rjiju5chh0rt02ho0ltb.apps.googleusercontent.com",
-      ).signIn();
-
-      if (googleUser == null) {
-        setState(() {
-          _isLoading = false;
-          _error = "You cancelled Google sign in.";
-        });
-        return;
-      }
-
-      final googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        setState(() => _error = "Unable to get Google ID Token.");
-        return;
-      }
-
-      // Gọi backend API thay vì Firebase
-      final response = await http.post(
-        Uri.parse(ApiConstants.loginWithGoogle),
-        body: {'idToken': idToken},
+      UserCredential credential = await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
+      final user = credential.user;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final user = data['user'];
+      if (user != null) {
+        if (!user.emailVerified) {
+          await _auth.signOut();
+          setState(() => _error = "Please verify your email before logging in.");
+          return;
+        }
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        await prefs.setString('token', data['token']);
-        await prefs.setInt('userId', user['id']);
-        await prefs.setString('fullname', user['fullname']);
-        await prefs.setString('avatar', user['avatar'] ?? '');
-        await prefs.setString('role', user['role']);
-        await prefs.setString('email', user['email']);
+        await prefs.setString('uid', user.uid);
+        await prefs.setString('email', user.email ?? '');
+        await prefs.setString('name', user.displayName ?? '');
+        await prefs.setString('photoUrl', user.photoURL ?? '');
 
-        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
-      } else {
-        final msg = _getErrorMessage(response);
-        setState(() => _error = msg);
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        final googleSignIn = GoogleSignIn();
-        if (await googleSignIn.isSignedIn()) {
-          await googleSignIn.signOut();
-        }
       }
-    } catch (e) {
-      print("Google login error: $e");
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        setState(() => _error = "Invalid email or password.");
+      } else if (e.code == 'invalid-email') {
+        setState(() => _error = "Invalid email format.");
+      } else {
+        setState(() => _error = "Login failed. Please try again.");
+      }
+    } catch (_) {
+      setState(() => _error = "Login failed. Please try again.");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // --- Google Login
+  Future<void> _handleGoogleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => _error = "Google sign-in cancelled.");
+        return;
+      }
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+
+      if (user != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('uid', user.uid);
+        await prefs.setString('email', user.email ?? '');
+        await prefs.setString('name', user.displayName ?? '');
+        await prefs.setString('photoUrl', user.photoURL ?? '');
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (_) {
+      setState(() => _error = "Google login failed. Please try again.");
+    } catch (_) {
       setState(() => _error = "Google login failed. Please try again.");
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  void parseToken(String token) {
-    Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-
-    int userId = decodedToken['userId'];
-    String email = decodedToken['sub'];
-    String role = decodedToken['role'];
-
-    print('User ID: $userId');
-    print('Email: $email');
-    print('Role: $role');
-  }
-
-  Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = "Please enter all required fields.");
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse(ApiConstants.login),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
-      print('Login API raw response: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final token = data['token'] as String;
-
-        final decodedToken = JwtDecoder.decode(token);
-        final userId = decodedToken['userId'];
-        final emailFromToken = decodedToken['sub'];
-        final role = decodedToken['role'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await prefs.setInt('userId', userId);
-        await prefs.setString('email', emailFromToken);
-        await prefs.setString('role', role);
-
-        // Fetch user profile
-        final profileResponse = await http.get(
-          Uri.parse("${ApiConstants.baseUrl}/users/profile/$userId"),
-          headers: {"Authorization": "Bearer $token"},
-        );
-
-        if (profileResponse.statusCode == 200) {
-          final profileData = jsonDecode(profileResponse.body);
-
-          if (profileData['fullname'] != null) {
-            await prefs.setString('fullname', profileData['fullname']);
-          }
-          if (profileData['avatar'] != null) {
-            await prefs.setString('avatar', profileData['avatar']);
-          }
-        }
-
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      } else {
-        final msg = _getErrorMessage(response);
-        setState(() => _error = msg);
-      }
-    } catch (e) {
-      print('Login error: $e');
-      setState(() => _error = "Unable to connect to server. Please try again.");
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -267,9 +131,7 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.all(24.0),
           child: Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -285,7 +147,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 16),
+                  // --- Email Field
                   TextField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -294,7 +157,8 @@ class _LoginPageState extends State<LoginPage> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  // --- Password Field
                   TextField(
                     controller: _passwordController,
                     obscureText: _isObscure,
@@ -312,37 +176,20 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Column(
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          minimumSize: const Size(double.infinity, 50),
-                          side: const BorderSide(color: Colors.grey),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: _handleGoogleLogin,
-                        icon: Image.asset(
-                          'assets/images/google_logo.png',
-                          height: 24,
-                        ),
-                        label: const Text("Sign in with Google"),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 8),
+                  // --- Error Message
                   if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.red),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 8),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  // --- Login Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -351,32 +198,41 @@ class _LoginPageState extends State<LoginPage> {
                           ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                           : const Text('Login'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  // --- Google Login
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size(double.infinity, 50),
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: _isLoading ? null : _handleGoogleLogin,
+                    icon: Image.asset('assets/images/google_logo.png', height: 24),
+                    label: const Text("Sign in with Google"),
+                  ),
                   const SizedBox(height: 12),
+                  // --- Forgot Password
                   TextButton(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const ForgotPasswordPage(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
                       );
                     },
                     child: const Text('Forgot password?'),
                   ),
+                  // --- Register Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -385,9 +241,7 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegisterPage(),
-                            ),
+                            MaterialPageRoute(builder: (context) => const RegisterPage()),
                           );
                         },
                         child: const Text('Register'),
