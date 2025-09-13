@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart'; // ✅ import
 
 import '../DTO/FeedbackDTO.dart';
 
@@ -17,6 +18,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
+
+  double _rating = 3;
 
   @override
   void initState() {
@@ -45,12 +48,13 @@ class _FeedbackPageState extends State<FeedbackPage> {
       }
 
       final feedback = FeedbackDTO(
-        userId: user.uid, // ✅ thêm userId
+        userId: user.uid,
         fullName: _nameController.text,
         email: _emailController.text,
         phone: _phoneController.text,
         message: _messageController.text,
         createdAt: DateTime.now(),
+        rating: _rating.toInt(), // ✅ lưu rating
       );
 
       try {
@@ -71,13 +75,13 @@ class _FeedbackPageState extends State<FeedbackPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text("User Feedback", style: TextStyle(color: Colors.white)),
+        title:
+        const Text("Feedback", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.teal,
         elevation: 2,
@@ -160,6 +164,41 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       validator: (value) => value == null || value.isEmpty
                           ? "Please enter your feedback"
                           : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Rating bar
+// Rating bar
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Column(
+                        children: [
+                          const Text(
+                            "Rate our service:",
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          RatingBar.builder(
+                            initialRating: _rating,
+                            minRating: 1,
+                            direction: Axis.horizontal,
+                            allowHalfRating: false,
+                            itemCount: 5,
+                            itemSize: 40, // ⭐ tăng size
+                            itemPadding: const EdgeInsets.symmetric(horizontal: 4.0), // spacing
+                            itemBuilder: (context, _) => const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                            ),
+                            onRatingUpdate: (rating) {
+                              setState(() {
+                                _rating = rating;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
 

@@ -60,7 +60,7 @@ class _SendNoticePageState extends State<SendNoticePage> {
         notice = SendNoticeDTO(
           title: title,
           message: message,
-          userId: null, // bỏ userId
+          userId: "ALL", // bỏ userId
         );
       } else {
         // Gửi cho user đã chọn

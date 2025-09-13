@@ -5,6 +5,7 @@ class FeedbackDTO {
   final String phone;
   final String message;
   final DateTime createdAt;
+  final int rating; // ⭐️ thêm rating
 
   FeedbackDTO({
     required this.userId,
@@ -13,6 +14,7 @@ class FeedbackDTO {
     required this.phone,
     required this.message,
     required this.createdAt,
+    required this.rating,
   });
 
   Map<String, dynamic> toJson() {
@@ -22,7 +24,8 @@ class FeedbackDTO {
       "email": email,
       "phone": phone,
       "message": message,
-      "createdAt": createdAt.toIso8601String(),
+      "createdAt": createdAt,
+      "rating": rating,
     };
   }
 }
