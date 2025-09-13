@@ -8,8 +8,6 @@ class SendNoticePage extends StatefulWidget {
   @override
   State<SendNoticePage> createState() => _SendNoticePageState();
 }
-
-
 class _SendNoticePageState extends State<SendNoticePage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();

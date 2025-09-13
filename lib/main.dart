@@ -113,15 +113,11 @@ class _MainScreenState extends State<MainScreen> {
   bool hasNewNotification = false;
   final List<Widget> _screens = [
     const NotificationScreen(),
+    // const SendNoticePage(),
     const ResourceMain(),
     const CareerGuidancePage(),
     const CareerBankPage(),
     const CareerDashboardScreen(),
-    // const QuizScreen(),
-    // const QuizScreenLiker(),
-    // const SurveyScreen()
-    // const QuestionListScreen() danh cho giao dien admin
-    // const QuizScreen(),
     const ContactUsPage(),
 
   ];
