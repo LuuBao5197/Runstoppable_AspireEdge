@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:trackmentalhealth/helper/UserSession.dart';
 import '../DTO/SendNoticeDTO.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -228,7 +227,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
         body: const Center(child: Text('Vui lòng đăng nhập để xem thông báo')),
       );
     }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Thông báo"),

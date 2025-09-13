@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
+import 'package:trackmentalhealth/pages/FeedbackPage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
@@ -380,6 +381,16 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     );
                     Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.feedback_outlined,
+                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
+                  ),
+                  title: const Text('Feedback'),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedbackPage()));
                   },
                 ),
                 ListTile(
