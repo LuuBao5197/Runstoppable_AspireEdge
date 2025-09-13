@@ -8,10 +8,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
+import 'package:trackmentalhealth/pages/Quizzes/CareerQuizDashboardScreen.dart';
+import 'package:trackmentalhealth/pages/Quizzes/QuestionListScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
+import 'package:trackmentalhealth/pages/Quizzes/QuizScreenLikert.dart';
+import 'package:trackmentalhealth/pages/Quizzes/SurveyScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
+import 'package:trackmentalhealth/pages/SplashScreen.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
 import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
@@ -81,25 +86,7 @@ class TrackMentalHealthApp extends StatelessWidget {
           foregroundColor: Colors.tealAccent,
         ),
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(), // Lắng nghe sự thay đổi
-        builder: (context, snapshot) {
-          // Trong khi chờ kết nối, hiển thị màn hình chờ
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          // Nếu có dữ liệu người dùng (đã đăng nhập)
-          if (snapshot.hasData) {
-            return const MainScreen(); // Đi thẳng vào màn hình chính
-          }
-          // Nếu không có dữ liệu (chưa đăng nhập)
-          return const LoginPage(); // Hiển thị trang đăng nhập
-        },
-      ),
+      home: SplashScreen(),
     );
   }
 }
@@ -116,15 +103,16 @@ class _MainScreenState extends State<MainScreen> {
   String? name;
   String? avatarUrl;
   bool _loadingProfile = true;
-
-
   bool hasNewNotification = false;
-
   final List<Widget> _screens = [
     const NotificationScreen(),
     const ResourceMain(),
     const CareerBankPage(),
-    const QuizScreen(),
+    const CareerDashboardScreen()
+    // const QuizScreen(),
+    // const QuizScreenLiker(),
+    // const SurveyScreen()
+    // const QuestionListScreen() danh cho giao dien admin
   ];
 
   @override
@@ -241,7 +229,6 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.notifications_active),
             label: 'Notice',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
             label: 'Resource',
