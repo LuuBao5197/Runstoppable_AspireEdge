@@ -47,6 +47,7 @@ dependencies:
   cloudinary_public: ^0.23.1 # Lõi của Cloudinary
   syncfusion_flutter_pdfviewer: ^28.1.33
   archive: ^3.4.0
+  webview_flutter: ^4.8.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

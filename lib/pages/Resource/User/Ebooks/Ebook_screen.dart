@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../tag_filter_dialog.dart';
 import '../../Admin/Ebooks/add_ebook_screen.dart';
 import 'detail_ebook_screen.dart';
- // import màn hình detail
 
 class EbookScreen extends StatefulWidget {
   const EbookScreen({super.key});
@@ -14,6 +14,7 @@ class EbookScreen extends StatefulWidget {
 
 class _EbookScreenState extends State<EbookScreen> {
   final firestore = FirebaseFirestore.instance;
+  final userId = FirebaseAuth.instance.currentUser!.uid; // 👈 lấy id user
   String searchQuery = "";
 
   final List<String> allTags = [
@@ -100,76 +101,120 @@ class _EbookScreenState extends State<EbookScreen> {
           return ListView(
             children: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              return GestureDetector(
-                onTap: () {
-                  // Khi bấm mở detail
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EbookDetailScreen(ebookId: doc.id),
-                    ),
-                  );
-                },
-                child: Card(
-                  margin: const EdgeInsets.all(8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (data["thumbnail"] != null)
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                          child: Image.network(
-                            data["thumbnail"],
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
+              final ebookId = doc.id;
+
+              // Kiểm tra trạng thái fav & mark của user
+              return StreamBuilder<DocumentSnapshot>(
+                stream: firestore
+                    .collection("ebooks")
+                    .doc(ebookId)
+                    .collection("favorites")
+                    .doc(userId)
+                    .snapshots(),
+                builder: (context, favSnap) {
+                  final isFav = favSnap.data?.exists ?? false;
+
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: firestore
+                        .collection("ebooks")
+                        .doc(ebookId)
+                        .collection("bookmarks")
+                        .doc(userId)
+                        .snapshots(),
+                    builder: (context, markSnap) {
+                      final isMark = markSnap.data?.exists ?? false;
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EbookDetailScreen(ebookId: ebookId),
+                            ),
+                          );
+                        },
+                        child: Card(
+                          margin: const EdgeInsets.all(8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (data["thumbnail"] != null)
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                                  child: Image.network(
+                                    data["thumbnail"],
+                                    height: 180,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            data["title"] ?? "",
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            data["description"] ?? "",
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        isFav ? Icons.favorite : Icons.favorite_border,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () async {
+                                        final favRef = firestore
+                                            .collection("ebooks")
+                                            .doc(ebookId)
+                                            .collection("favorites")
+                                            .doc(userId);
+                                        if (isFav) {
+                                          await favRef.delete();
+                                        } else {
+                                          await favRef.set({"createdAt": FieldValue.serverTimestamp()});
+                                        }
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        isMark ? Icons.bookmark : Icons.bookmark_border,
+                                      ),
+                                      onPressed: () async {
+                                        final markRef = firestore
+                                            .collection("ebooks")
+                                            .doc(ebookId)
+                                            .collection("bookmarks")
+                                            .doc(userId);
+                                        if (isMark) {
+                                          await markRef.delete();
+                                        } else {
+                                          await markRef.set({"createdAt": FieldValue.serverTimestamp()});
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    data["title"] ?? "",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    data["description"] ?? "",
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
-                                color: Colors.red,
-                              ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
-                                "isFavorite": !(data["isFavorite"] ?? false),
-                              }),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                data["isBookmark"] == true ? Icons.bookmark : Icons.bookmark_border,
-                              ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
-                                "isBookmark": !(data["isBookmark"] ?? false),
-                              }),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                      );
+                    },
+                  );
+                },
               );
             }).toList(),
           );

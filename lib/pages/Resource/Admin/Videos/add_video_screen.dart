@@ -16,6 +16,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   final firestore = FirebaseFirestore.instance;
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
+  final _embedUrlController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final cloudinary = CloudinaryPublic('dbghucaix', 'ml_default');
 
@@ -23,6 +24,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   String? videoUrl;
   bool isUploading = false;
   bool showAllTags = false;
+
+  // videoType = "upload" or "embed"
+  String videoType = "upload";
 
   final List<String> allTags = [
     "Tutorial",
@@ -60,7 +64,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
     }
   }
 
-  // --- Pick Video ---
+  // --- Pick Video (Upload) ---
   Future<void> pickVideo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -98,8 +102,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
     if (_titleController.text.isEmpty ||
         _descController.text.isEmpty ||
         thumbnailUrl == null ||
-        videoUrl == null ||
-        selectedTags.isEmpty) {
+        selectedTags.isEmpty ||
+        (videoType == "upload" && videoUrl == null) ||
+        (videoType == "embed" && _embedUrlController.text.isEmpty)) {
       showToast("⚠️ Fill all fields", "warning");
       return;
     }
@@ -108,12 +113,14 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
       "title": _titleController.text.trim(),
       "description": _descController.text.trim(),
       "thumbnail": thumbnailUrl,
-      "videoUrl": videoUrl,
+      "videoUrl": videoType == "upload" ? videoUrl : null,
+      "embedUrl": videoType == "embed" ? _embedUrlController.text.trim() : null,
+      "videoType": videoType, // upload | embed
       "tags": selectedTags,
       "isFavorite": false,
       "isWishlist": false,
       "createdAt": FieldValue.serverTimestamp(),
-      "createdBy": user.uid, // thêm createdBy
+      "createdBy": user.uid,
     });
 
     await docRef.update({"id": docRef.id});
@@ -180,19 +187,49 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
               decoration: const InputDecoration(labelText: "Description"),
               maxLines: 3,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
 
-            // --- Upload Video ---
-            ElevatedButton.icon(
-              onPressed: pickVideo,
-              icon: const Icon(Icons.video_library),
-              label: Text(videoUrl != null ? "Video Selected" : "Select MP4 Video"),
+            // --- Video Type Switch ---
+            Row(
+              children: [
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text("Upload Video"),
+                    value: "upload",
+                    groupValue: videoType,
+                    onChanged: (val) => setState(() => videoType = val!),
+                  ),
+                ),
+                Expanded(
+                  child: RadioListTile<String>(
+                    title: const Text("Embed Video"),
+                    value: "embed",
+                    groupValue: videoType,
+                    onChanged: (val) => setState(() => videoType = val!),
+                  ),
+                ),
+              ],
             ),
-            if (isUploading)
-              const Padding(
-                padding: EdgeInsets.all(8),
-                child: LinearProgressIndicator(),
+
+            if (videoType == "upload") ...[
+              ElevatedButton.icon(
+                onPressed: pickVideo,
+                icon: const Icon(Icons.video_library),
+                label: Text(videoUrl != null ? "Video Selected" : "Select MP4 Video"),
               ),
+              if (isUploading)
+                const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: LinearProgressIndicator(),
+                ),
+            ] else ...[
+              TextField(
+                controller: _embedUrlController,
+                decoration: const InputDecoration(
+                  labelText: "Embed URL (YouTube, Vimeo, etc.)",
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // --- Tags ---

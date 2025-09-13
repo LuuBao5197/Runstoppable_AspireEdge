@@ -38,7 +38,6 @@ class _ResourceMainState extends State<ResourceMain>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Resource Center"),
         bottom: TabBar(
           controller: _tabController,
           tabs: myTabs,

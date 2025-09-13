@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../../../utils/showToast.dart';
 import '../../Admin/Blogs/add_blog_screen.dart';
 import '../../tag_filter_dialog.dart';
@@ -23,7 +25,9 @@ class _BlogScreenState extends State<BlogScreen> {
   final cloudinary = CloudinaryPublic('dbghucaix', 'ml_default');
 
   String? thumbnailUrl;
-  String searchQuery = ""; // query để search
+  String searchQuery = "";
+
+  final user = FirebaseAuth.instance.currentUser; // user hiện tại
 
   // filter tags
   final List<String> allTags = [
@@ -38,7 +42,7 @@ class _BlogScreenState extends State<BlogScreen> {
     "Leadership",
     "Entrepreneurship",
   ];
-  Map<String, int> selectedTags = {}; // tag → 0 (none), 1 (include), -1 (exclude)
+  Map<String, int> selectedTags = {};
 
   @override
   void initState() {
@@ -67,8 +71,8 @@ class _BlogScreenState extends State<BlogScreen> {
       "description": _descController.text.trim(),
       "thumbnail": thumbnailUrl,
       "tags": ["Food", "Education"],
-      "isFavorite": false,
-      "isBookmark": false,
+      "favorites": {}, // map userId -> true
+      "bookmarks": {}, // map userId -> true
       "createdAt": FieldValue.serverTimestamp(),
     });
     showToast("✅ Blog saved", "success");
@@ -149,6 +153,8 @@ class _BlogScreenState extends State<BlogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = user?.uid;
+
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -173,13 +179,12 @@ class _BlogScreenState extends State<BlogScreen> {
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestore.collection("blogs").snapshots(), // ko orderBy
+        stream: firestore.collection("blogs").snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Convert to list và shuffle
           final docs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final tags = List<String>.from(data["tags"] ?? []);
@@ -200,15 +205,18 @@ class _BlogScreenState extends State<BlogScreen> {
               final title = (data["title"] ?? "").toString().toLowerCase();
               if (!title.contains(searchQuery)) return false;
             }
-
             return true;
           }).toList();
-
-          docs.shuffle(Random()); // <- shuffle mỗi lần build
 
           return ListView(
             children: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
+              final favMap = Map<String, dynamic>.from(data["favorites"] ?? {});
+              final markMap = Map<String, dynamic>.from(data["bookmarks"] ?? {});
+
+              final isFav = currentUserId != null && favMap[currentUserId] == true;
+              final isMark = currentUserId != null && markMap[currentUserId] == true;
+
               return InkWell(
                 onTap: () {
                   Navigator.push(
@@ -260,23 +268,29 @@ class _BlogScreenState extends State<BlogScreen> {
                                 ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(
-                                data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
-                                color: Colors.red,
+                            if (currentUserId != null) ...[
+                              IconButton(
+                                icon: Icon(
+                                  isFav ? Icons.favorite : Icons.favorite_border,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () {
+                                  firestore.collection("blogs").doc(doc.id).update({
+                                    "favorites.$currentUserId": !isFav,
+                                  });
+                                },
                               ),
-                              onPressed: () => firestore.collection("blogs").doc(doc.id).update({
-                                "isFavorite": !(data["isFavorite"] ?? false),
-                              }),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                data["isBookmark"] == true ? Icons.bookmark : Icons.bookmark_border,
+                              IconButton(
+                                icon: Icon(
+                                  isMark ? Icons.bookmark : Icons.bookmark_border,
+                                ),
+                                onPressed: () {
+                                  firestore.collection("blogs").doc(doc.id).update({
+                                    "bookmarks.$currentUserId": !isMark,
+                                  });
+                                },
                               ),
-                              onPressed: () => firestore.collection("blogs").doc(doc.id).update({
-                                "isBookmark": !(data["isBookmark"] ?? false),
-                              }),
-                            ),
+                            ],
                           ],
                         ),
                       ),
