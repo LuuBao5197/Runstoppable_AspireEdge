@@ -65,29 +65,29 @@ class CareerFirebaseService {
   // ==================== CAREER BANK OPERATIONS ====================
   
   /// Tạo career mới
+  // createCareer mới
+  /// Tạo career mới
   static Future<void> createCareer({
     required String title,
     required String industry,
     required String description,
     required List<String> skills,
     required String salaryRange,
-    required String educationPath,
+    String? imageUrl,
+    EducationPath? educationPath, // <-- cho phép null
   }) async {
-    try {
-      await _firestore.collection('careers').add({
-        'title': title,
-        'industry': industry,
-        'description': description,
-        'skills': skills,
-        'salaryRange': salaryRange,
-        'educationPath': educationPath,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      throw Exception('Error creating career: $e');
-    }
+    await FirebaseFirestore.instance.collection('careers').add({
+      "title": title,
+      "industry": industry,
+      "description": description,
+      "skills": skills,
+      "salaryRange": salaryRange,
+      "imageUrl": imageUrl,
+      "education_path": educationPath?.toMap(), // <-- chỉ ghi nếu khác null
+      "createdAt": FieldValue.serverTimestamp(),
+    });
   }
+
 
   /// Lấy career theo ID
   static Future<CareerBank?> getCareer(String careerId) async {
@@ -126,25 +126,20 @@ class CareerFirebaseService {
   }
 
   /// Cập nhật career
-  static Future<void> updateCareer(String careerId, Map<String, dynamic> data) async {
-    try {
-      await _firestore.collection('careers').doc(careerId).update({
-        ...data,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      throw Exception('Error updating career: $e');
-    }
+  static Future<void> updateCareer(String id, CareerBank career) async {
+    await FirebaseFirestore.instance.collection('careers').doc(id).update({
+      "title": career.title,
+      "industry": career.industry,
+      "description": career.description,
+      "skills": career.skills,
+      "salaryRange": career.salaryRange,
+      "imageUrl": career.imageUrl,
+      "education_path": career.educationPath?.toMap(),
+    });
   }
 
-  /// Xóa career
-  static Future<void> deleteCareer(String careerId) async {
-    try {
-      await _firestore.collection('careers').doc(careerId).delete();
-    } catch (e) {
-      throw Exception('Error deleting career: $e');
-    }
-  }
+
+
 
   // ==================== QUIZ OPERATIONS ====================
   
@@ -213,7 +208,7 @@ class CareerFirebaseService {
   }
 
   // ==================== TESTIMONIAL OPERATIONS ====================
-  
+
   /// Tạo testimonial mới
   static Future<void> createTestimonial({
     required String name,
@@ -284,7 +279,7 @@ class CareerFirebaseService {
   }
 
   // ==================== FEEDBACK OPERATIONS ====================
-  
+
   /// Tạo feedback mới
   static Future<void> createFeedback({
     required String userId,
