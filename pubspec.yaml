@@ -47,7 +47,9 @@ dependencies:
   cloudinary_public: ^0.23.1 # Lõi của Cloudinary
   syncfusion_flutter_pdfviewer: ^28.1.33
   archive: ^3.4.0
-  webview_flutter: ^4.8.0
+  sqflite: ^2.3.3+1
+  path: ^1.9.0
+  connectivity_plus: ^6.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -59,4 +61,3 @@ flutter:
   assets:
     - assets/images/
     - assets/images/LogoTMH.png
-    - assets/data/career_bank_full_20.json
