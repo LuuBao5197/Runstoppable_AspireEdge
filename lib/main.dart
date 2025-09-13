@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/career_guidance_page.dart';
+import 'package:trackmentalhealth/pages/ContactUsPage.dart';
+import 'package:trackmentalhealth/pages/FeedbackPage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/CareerQuizDashboardScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuestionListScreen.dart';
@@ -25,6 +28,7 @@ import 'package:trackmentalhealth/pages/utils/permissions.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/seed/importSampleCareers.dart';
+import 'package:trackmentalhealth/services/NotificationService.dart';
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
@@ -109,20 +113,36 @@ class _MainScreenState extends State<MainScreen> {
   bool hasNewNotification = false;
   final List<Widget> _screens = [
     const NotificationScreen(),
+    // const SendNoticePage(),
     const ResourceMain(),
     const CareerGuidancePage(),
     const CareerBankPage(),
+    const ContactUsPage(),
     const CareerDashboardScreen()
-    // const QuizScreen(),
-    // const QuizScreenLiker(),
-    // const SurveyScreen()
+
     // const QuestionListScreen() danh cho giao dien admin
   ];
+
+  late final StreamSubscription<List<Map<String, dynamic>>> _notiSub;
+  int unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+
+    _notiSub = NotificationService().notificationsStream.listen((notis) {
+      final count = notis.where((n) => n['isRead'] == false).length;
+      setState(() {
+        unreadCount = count;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _notiSub.cancel();
+    super.dispose();
   }
 
 
@@ -190,19 +210,32 @@ class _MainScreenState extends State<MainScreen> {
                 labelType: NavigationRailLabelType.none,
                 selectedIconTheme: IconThemeData(color: selectedColor),
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
-                destinations: const [
+                destinations: [
                   NavigationRailDestination(
-                    icon: Icon(Icons.notifications_active),
+                    icon: Stack(
+                      children: [
+                        Icon(Icons.notifications_active),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: BoxConstraints(minWidth: 16, minHeight: 16),
+                              child: Text(
+                                '$unreadCount',
+                                style: TextStyle(color: Colors.white, fontSize: 10),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                     label: Text("Notice"),
-
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
-                    label: Text("Test"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("Diary"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.mood),
@@ -252,7 +285,12 @@ class _MainScreenState extends State<MainScreen> {
 
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
-            label: 'career guidance',
+            label: 'Career Guidance',
+          ),
+
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contact_page),
+            label: 'Contact',
           ),
         ],
       ),
@@ -387,6 +425,22 @@ class _MainScreenState extends State<MainScreen> {
                     Navigator.pop(context);
                   },
                 ),
+                ListTile(
+                  leading: Icon(
+                    Icons.feedback_outlined,
+                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
+                  ),
+                  title: const Text('Feed back'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FeedbackPage()),
+                    );
+                    if (result == true) _loadProfile();
+                  },
+                ),
+
                 ListTile(
                   leading: Icon(
                     Icons.logout,
