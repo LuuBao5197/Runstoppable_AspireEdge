@@ -74,7 +74,8 @@ class CareerBank {
   final String description;
   final List<String> skills;
   final String salaryRange;
-  final String educationPath;
+  final EducationPath? educationPath;
+  final String? imageUrl; // thêm ảnh
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -85,23 +86,41 @@ class CareerBank {
     required this.description,
     required this.skills,
     required this.salaryRange,
-    required this.educationPath,
+    this.educationPath,
+    this.imageUrl,
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory CareerBank.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    EducationPath? educationPath;
+    if (data['educationPath'] != null) {
+      educationPath = EducationPath.fromMap(Map<String, dynamic>.from(data['educationPath']));
+    }
+
+    DateTime createdAt = DateTime.now();
+    if (data.containsKey('createdAt') && data['createdAt'] != null) {
+      createdAt = (data['createdAt'] as Timestamp).toDate();
+    }
+
+    DateTime updatedAt = DateTime.now();
+    if (data.containsKey('updatedAt') && data['updatedAt'] != null) {
+      updatedAt = (data['updatedAt'] as Timestamp).toDate();
+    }
+
     return CareerBank(
       careerId: doc.id,
       title: data['title'] ?? '',
       industry: data['industry'] ?? '',
       description: data['description'] ?? '',
-      skills: List<String>.from(data['skills'] ?? []),
+      skills: data['skills'] != null ? List<String>.from(data['skills']) : [],
       salaryRange: data['salaryRange'] ?? '',
-      educationPath: data['educationPath'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      educationPath: educationPath,
+      imageUrl: data['imageUrl'],
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 
@@ -112,32 +131,51 @@ class CareerBank {
       'description': description,
       'skills': skills,
       'salaryRange': salaryRange,
-      'educationPath': educationPath,
+      'educationPath': educationPath?.toMap(),
+      'imageUrl': imageUrl,
     };
-  }
-
-  CareerBank copyWith({
-    String? title,
-    String? industry,
-    String? description,
-    List<String>? skills,
-    String? salaryRange,
-    String? educationPath,
-  }) {
-    return CareerBank(
-      careerId: careerId,
-      title: title ?? this.title,
-      industry: industry ?? this.industry,
-      description: description ?? this.description,
-      skills: skills ?? this.skills,
-      salaryRange: salaryRange ?? this.salaryRange,
-      educationPath: educationPath ?? this.educationPath,
-      createdAt: createdAt,
-      updatedAt: DateTime.now(),
-    );
   }
 }
 
+class EducationPath {
+  final String degree;
+  final List<String> courses;
+  final List<String> certificates;
+  final String duration;
+  final String careerLevel;
+  final String estimatedCost;
+
+  EducationPath({
+    required this.degree,
+    required this.courses,
+    required this.certificates,
+    required this.duration,
+    required this.careerLevel,
+    required this.estimatedCost,
+  });
+
+  factory EducationPath.fromMap(Map<String, dynamic> map) {
+    return EducationPath(
+      degree: map['degree'] ?? '',
+      courses: List<String>.from(map['courses'] ?? []),
+      certificates: List<String>.from(map['certificates'] ?? []),
+      duration: map['duration'] ?? '',
+      careerLevel: map['career_level'] ?? '',
+      estimatedCost: map['estimated_cost'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'degree': degree,
+      'courses': courses,
+      'certificates': certificates,
+      'duration': duration,
+      'career_level': careerLevel,
+      'estimated_cost': estimatedCost,
+    };
+  }
+}
 // ==================== QUIZ MODEL ====================
 class Quiz {
   final String questionId;

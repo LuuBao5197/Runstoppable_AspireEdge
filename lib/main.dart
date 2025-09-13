@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
+import 'package:trackmentalhealth/pages/CareerBank/career_guidance_page.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/CareerQuizDashboardScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuestionListScreen.dart';
@@ -17,11 +18,13 @@ import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
 import 'package:trackmentalhealth/pages/SplashScreen.dart';
+import 'package:trackmentalhealth/pages/CareerBankAdminPage.dart';
 import 'package:trackmentalhealth/pages/login/authentication.dart';
 import 'package:trackmentalhealth/pages/login/google_auth.dart';
 import 'package:trackmentalhealth/pages/utils/permissions.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
+import 'package:trackmentalhealth/seed/importSampleCareers.dart';
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
@@ -107,6 +110,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const NotificationScreen(),
     const ResourceMain(),
+    const CareerGuidancePage(),
     const CareerBankPage(),
     const CareerDashboardScreen()
     // const QuizScreen(),
@@ -193,12 +197,16 @@ class _MainScreenState extends State<MainScreen> {
 
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("CareerBank"),
+                    icon: Icon(Icons.quiz),
+                    label: Text("Test"),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
-                    label: Text("Career Quizzes"),
+                    icon: Icon(Icons.mood),
+                    label: Text("Diary"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.mood),
+                    label: Text("CareerBank"),
                   ),
                 ],
               ),
@@ -242,6 +250,10 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Career Quizzes',
           ),
 
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book),
+            label: 'career guidance',
+          ),
         ],
       ),
     );
