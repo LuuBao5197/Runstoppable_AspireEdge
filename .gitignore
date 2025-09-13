@@ -45,9 +45,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-/lib/serviceAccountKey.json
+/firebase-importer/serviceAccountKey.json
 /lib/ttechwizz_data.json
 /functions-nodejs/.env
-/lib/import_script.py
+/firebase-importer/import_script.js
 /functions-nodejs/node_modules
 /functions-nodejs/package-lock.json
+/node_modules
+/set-admin.js
+/firebase-importer
+

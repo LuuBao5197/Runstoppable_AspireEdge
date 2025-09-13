@@ -148,3 +148,91 @@ exports.get_next_question = functions.https.onRequest(async (req, res) => {
     }
   });
 });
+// ... import và khởi tạo ...
+
+exports.addNewQuestion = functions.https.onCall(async (data, context) => {
+  // Giả sử admin đã đăng nhập và có quyền
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Permission denied.");
+  }
+
+  const { questionText, questionType, answers, options } = data;
+
+  if (!questionText) {
+    throw new functions.https.HttpsError("invalid-argument", "Question text is required.");
+  }
+
+  const questionsRef = db.collection("questions");
+
+  // === BƯỚC KIỂM TRA TRÙNG LẶP ===
+  // 1. Tạo một query để tìm kiếm các document có questionText y hệt
+  const snapshot = await questionsRef.where("questionText", "==", questionText).limit(1).get();
+
+  // 2. Nếu query trả về kết quả (snapshot không rỗng), nghĩa là đã tồn tại
+  if (!snapshot.empty) {
+    console.log(`Attempted to add a duplicate question: "${questionText}"`);
+    throw new functions.https.HttpsError(
+      "already-exists",
+      "A question with this exact text already exists."
+    );
+  }
+  // ================================
+
+  // 3. Nếu không trùng, tiến hành thêm câu hỏi mới vào database
+  try {
+    const newQuestion = { questionText, questionType, answers, options }; // và các field khác
+    const writeResult = await questionsRef.add(newQuestion);
+    console.log(`Successfully added new question with ID: ${writeResult.id}`);
+    return { success: true, questionId: writeResult.id };
+  } catch (error) {
+    console.error("Error adding new question:", error);
+    throw new functions.https.HttpsError("internal", "Could not add new question.");
+  }
+});
+
+// index.js -> thay thế function updateQuestion
+
+exports.updateQuestion = functions.https.onCall(async (data, context) => {
+  // Log dữ liệu gốc nhận được để debug
+  console.log("Raw data object received by function:", data);
+
+  // === BƯỚC KIỂM TRA MỚI: Xử lý dữ liệu bị gói ===
+  // Kiểm tra xem dữ liệu thực sự có nằm trong một key tên "data" hay không.
+  // Nếu có, dùng nó. Nếu không, dùng data gốc.
+  const payload = data.data || data;
+  // ===============================================
+
+  // Kiểm tra quyền admin
+//  if (context.auth.token.admin !== true) {
+//    throw new functions.https.HttpsError("permission-denied", "You must be an admin to perform this action.");
+//  }
+
+  // Lấy ID và dữ liệu mới từ "payload" thay vì "data"
+  const { questionId, questionText, ...otherData } = payload;
+  if (!questionId || !questionText) {
+    console.error("Validation failed. Final payload did not contain questionId or questionText:", payload);
+    throw new functions.https.HttpsError("invalid-argument", "Question ID and text are required in the payload.");
+  }
+
+  const questionsRef = db.collection("questions");
+
+  // Logic kiểm tra trùng lặp (giữ nguyên)
+  const snapshot = await questionsRef
+    .where("questionText", "==", questionText)
+    .where(admin.firestore.FieldPath.documentId(), "!=", questionId)
+    .limit(1)
+    .get();
+
+  if (!snapshot.empty) {
+    throw new functions.https.HttpsError("already-exists", "Another question with this exact text already exists.");
+  }
+
+  // Cập nhật câu hỏi (giữ nguyên)
+  try {
+    await questionsRef.doc(questionId).update({ questionText, ...otherData });
+    return { success: true, message: "Question updated successfully." };
+  } catch (error) {
+    console.error("Error updating question:", error.message);
+    throw new functions.https.HttpsError("internal", "Could not update question.");
+  }
+});

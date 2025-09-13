@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'MultipleChoiceWidget.dart';
 import 'QuizState.dart';
 import 'RankingWidget.dart';
+import 'ResultScreen.dart';
 
 class QuizScreen extends StatelessWidget {
   const QuizScreen({super.key});
@@ -19,27 +20,20 @@ class QuizScreen extends StatelessWidget {
         appBar: AppBar(title: Text("Career Interest Quiz")),
         body: Consumer<QuizState>(
           builder: (context, state, child) {
-            if (state.isLoading) {
+            if (state.isQuizCompleted) {
+              // Dùng addPostFrameCallback để điều hướng một cách an toàn sau khi build xong
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => ResultScreen(results: state.finalResults)),
+                );
+              });
+              // Trong khi chờ điều hướng, hiển thị loading
               return Center(child: CircularProgressIndicator());
             }
 
-            // Xử lý khi quiz hoàn thành
-            if (state.isQuizCompleted) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("Quiz Completed!", style: Theme.of(context).textTheme.headlineMedium),
-                      SizedBox(height: 16),
-                      Text(state.quizCompletionMessage, textAlign: TextAlign.center),
-                      // Hiển thị điểm số cuối cùng (tùy chọn)
-                      // Text("Final Scores: ${state.userScores.toString()}"),
-                    ],
-                  ),
-                ),
-              );
+            if (state.isLoading || state.currentQuestion == null) {
+              return Center(child: CircularProgressIndicator());
             }
 
             if (state.currentQuestion == null) {
