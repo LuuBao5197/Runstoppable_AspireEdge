@@ -26,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _role = "students";
   bool _isLoading = true;
+  bool _isRegisteringFace = false;
 
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
@@ -38,6 +39,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+  }
+
+  Future<void> _registerFace() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+
+    if (picked == null) return;
+
+    setState(() => _isRegisteringFace = true);
+
+    try {
+      final file = File(picked.path);
+      final email = _emailController.text.trim();
+
+      final formData = FormData.fromMap({
+        "image": await MultipartFile.fromFile(file.path),
+        "email": email,
+      });
+
+      final response = await Dio().post(
+        "http://10.0.2.2:8080/generate_embedding", // Docker backend
+        data: formData,
+        options: Options(
+          headers: {"Content-Type": "multipart/form-data"},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        // Lưu kết quả nếu muốn
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Face registered successfully ✅")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${response.data["error"]}")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to register face: $e")),
+      );
+    } finally {
+      setState(() => _isRegisteringFace = false);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -365,6 +410,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             setState(() => _role = val.toString()),
                       ),
                       const SizedBox(height: 24),
+                      TextButton.icon(
+                        onPressed: _isRegisteringFace ? null : _registerFace,
+                        icon: const Icon(Icons.face),
+                        label: Text(_isRegisteringFace ? "Registering..." : "Register Face"),
+                      ),
 
                       ElevatedButton.icon(
                         onPressed: _saveProfile,

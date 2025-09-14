@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -117,8 +118,18 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _requestPermissions();
     _loadProfile();
   }
+
+  Future<void> _requestPermissions() async {
+    await [
+      Permission.camera,
+      Permission.microphone,
+      Permission.storage, // hoặc Permission.videos cho Android 13+
+    ].request();
+  }
+
 
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);

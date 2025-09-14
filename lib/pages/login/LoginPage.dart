@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:trackmentalhealth/main.dart';
@@ -81,50 +83,81 @@ class _LoginPageState extends State<LoginPage> {
 
   // --- Face Login
   Future<void> _handleFaceLogin() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera);
-    if (picked == null) return;
-
     setState(() => _isLoading = true);
 
-    final image = File(picked.path);
-    final result = await verifyFace(image, _emailController.text.trim());
+    CameraController? controller;
+    try {
+      // Xin quyền
+      var status = await Permission.camera.request();
+      var micStatus = await Permission.microphone.request();
+      if (status.isDenied || micStatus.isDenied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("⚠️ Camera/Microphone permission denied")),
+        );
+        return;
+      }
 
-    if (result != null && result["success"] == true && result["customToken"] != null) {
-      try {
-        // 🔹 Sign in với FirebaseAuth bằng Custom Token
-        await FirebaseAuth.instance.signInWithCustomToken(result["customToken"]);
+      // Khởi tạo camera
+      final cameras = await availableCameras();
+      controller = CameraController(
+        cameras.first,
+        ResolutionPreset.medium,
+        enableAudio: true,
+      );
+      await controller.initialize();
 
-        // 🔹 Lưu thông tin vào SharedPreferences
+      // Quay video 3 giây
+      await controller.startVideoRecording();
+      await Future.delayed(const Duration(seconds: 3));
+
+      if (!controller.value.isRecordingVideo) {
+        throw Exception("No video is recording");
+      }
+      final XFile videoFile = await controller.stopVideoRecording();
+      await controller.dispose();
+
+      // Gửi video lên Flask
+      final uri = Uri.parse("http://10.0.2.2:8080/verify_face_video");
+      var request = http.MultipartRequest('POST', uri);
+      request.fields['email'] = _emailController.text.trim();
+      request.files.add(await http.MultipartFile.fromPath('video', videoFile.path));
+
+      final response = await request.send();
+      final resBody = await response.stream.bytesToString();
+      final result = jsonDecode(resBody);
+
+      if (response.statusCode == 200 && result["success"] == true) {
+        // Firebase login với custom token
+        final customToken = result["customToken"];
+        final credential = await _auth.signInWithCustomToken(customToken);
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("last_email", result["email"] ?? "");
-        await prefs.setString("name", result["user_info"]["name"] ?? "");
-        await prefs.setString("uid", result["user_info"]["uid"] ?? "");
-        await prefs.setString("photoUrl", result["user_info"]["photoUrl"] ?? ""); // thêm dòng này
+        await prefs.setString('uid', credential.user?.uid ?? '');
+        await prefs.setString('email', credential.user?.email ?? '');
+        await prefs.setString('name', credential.user?.displayName ?? '');
+        await prefs.setString('photoUrl', credential.user?.photoURL ?? '');
+        await prefs.setString('last_email', credential.user?.email ?? "");
 
-
-        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
-      } catch (e) {
-        print("❌ FirebaseAuth Custom Token login failed: $e");
-        if (!mounted) return;
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Firebase login failed")),
+          SnackBar(content: Text("❌ ${result["error"] ?? "Face verification failed"}")),
         );
       }
-    } else {
-      if (!mounted) return;
+    } catch (e) {
+      print("⚠️ Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("❌ Face verification failed")),
+        const SnackBar(content: Text("⚠️ Liveness detection failed")),
       );
+    } finally {
+      // Nếu quên dispose thì dispose ở đây
+      controller?.dispose();
+      setState(() => _isLoading = false);
     }
-
-    setState(() => _isLoading = false);
   }
-
 
   // --- Email/Password Login
   Future<void> _handleEmailLogin() async {
