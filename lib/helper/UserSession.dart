@@ -1,38 +1,31 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class UserSession {
-  static Future<int?> getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('userId');
+  /// Lấy UID của user hiện tại từ FirebaseAuth
+  static String? getCurrentUserId() {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.uid;
   }
 
-  static Future<String?> getFullname() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('fullname');
+  /// Lấy thông tin user khác nếu cần
+  static String? getCurrentUserEmail() {
+    return FirebaseAuth.instance.currentUser?.email;
   }
 
-  static Future<String?> getAvatar() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('avatar');
+  static String? getCurrentUserDisplayName() {
+    return FirebaseAuth.instance.currentUser?.displayName;
   }
 
-  static Future<String?> getRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('role');
+  static String? getCurrentUserPhotoURL() {
+    return FirebaseAuth.instance.currentUser?.photoURL;
   }
 
-  static Future<String?> getEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('email');
-  }
-
-  static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
-
-  static Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+  /// Logout user
+  static Future<void> logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      print("Logout error: $e");
+    }
   }
 }
