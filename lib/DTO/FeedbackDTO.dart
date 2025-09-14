@@ -6,6 +6,7 @@ class FeedbackDTO {
   final String message;
   final DateTime createdAt;
   final int rating; // ⭐️ thêm rating
+  final String status; // pending, approved, rejected
 
   FeedbackDTO({
     required this.userId,
@@ -15,6 +16,7 @@ class FeedbackDTO {
     required this.message,
     required this.createdAt,
     required this.rating,
+    required this.status,
   });
 
   Map<String, dynamic> toJson() {
@@ -26,6 +28,7 @@ class FeedbackDTO {
       "message": message,
       "createdAt": createdAt,
       "rating": rating,
+      "status": status,
     };
   }
 }
