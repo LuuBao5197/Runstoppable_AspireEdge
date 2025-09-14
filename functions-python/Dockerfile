@@ -1,26 +1,23 @@
-# Base image Python 3.10 slim
+# Base image
 FROM python:3.10-slim
 
-# Cài build tools & thư viện cần thiết cho dlib/opencv
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential cmake \
-    libopenblas-dev liblapack-dev \
-    libx11-dev libgtk-3-dev \
-    libboost-python-dev \
+    build-essential cmake python3-dev \
+    libboost-all-dev libopenblas-dev liblapack-dev \
+    libx11-dev libgtk-3-dev libsm6 libxext6 libxrender-dev \
     git wget unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Tạo working directory
+# Set working directory
 WORKDIR /app
 
-# Copy requirements và cài dependencies
-COPY requirements.txt .
+# Copy all files
+COPY . .
+
+# Install Python dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Copy code vào container
-COPY . .
-
-# Cài đặt Flask route để route function dựa trên URL
-# Chạy functions-framework với main.py
+# Run Flask app (bạn dùng functions-framework nếu cần)
 CMD ["functions-framework", "--target=app", "--port=8080"]
