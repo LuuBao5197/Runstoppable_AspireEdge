@@ -1,19 +1,19 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/ContactUsPage.dart';
 import 'package:trackmentalhealth/widgets/CategorySelectWidget.dart';
 
 import '../core/constants/theme_provider.dart';
-import '../pages/CareerBank/CareerBankPage.dart';
+import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
-import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
-import '../pages/Quizzes/QuestionListScreen.dart';
 import '../pages/Resource/resource_main.dart';
 import '../pages/login/LoginPage.dart';
-import '../pages/profile/ProfileScreen.dart';
+import '../services/NotificationService.dart';
 
 class StudentScreen extends StatefulWidget {
   const StudentScreen({super.key});
@@ -27,24 +27,42 @@ class _StudentScreenState extends State<StudentScreen> {
   String? name;
   String? avatarUrl;
   bool _loadingProfile = true;
-  bool hasNewNotification = false;
+  int _unreadCount = 0;
+
+  final NotificationService _notificationService = NotificationService();
+  late StreamSubscription _notificationSub;
+
   final List<Widget> _screens = [
     const NotificationScreen(),
     const ResourceMain(),
-    const CareerBankPage(),
-    const CareerDashboardScreen(),
-    const CategorySelectionScreen()
-    // const QuestionListScreen()
+    const ContactUsPage(),
+    const CategorySelectionScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+
+    // Listen notifications realtime
+    _notificationSub =
+        _notificationService.notificationsStream.listen((notifications) {
+          final unread = notifications.where((n) => n['isRead'] == false).length;
+          setState(() {
+            _unreadCount = unread;
+          });
+        });
   }
+
+  @override
+  void dispose() {
+    _notificationSub.cancel();
+    _notificationService.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
-
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -52,10 +70,8 @@ class _StudentScreenState extends State<StudentScreen> {
         return;
       }
 
-      final doc = await FirebaseFirestore.instance
-          .collection('account')
-          .doc(user.uid)
-          .get();
+      final doc =
+      await FirebaseFirestore.instance.collection('account').doc(user.uid).get();
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -63,7 +79,6 @@ class _StudentScreenState extends State<StudentScreen> {
           name = data['name'] ?? "User";
           avatarUrl = data['avatarUrl'];
           _loadingProfile = false;
-          print("✅ Avatar URL: $avatarUrl");
         });
       } else {
         setState(() => _loadingProfile = false);
@@ -73,6 +88,7 @@ class _StudentScreenState extends State<StudentScreen> {
       setState(() => _loadingProfile = false);
     }
   }
+
   void _onTabTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -81,10 +97,39 @@ class _StudentScreenState extends State<StudentScreen> {
 
   Widget _buildNavigation(BuildContext context, bool isDarkMode) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
-
     final backgroundColor = isDarkMode ? Colors.grey.shade900 : Colors.white;
     final selectedColor = Colors.tealAccent;
     final unselectedColor = isDarkMode ? Colors.white70 : Colors.grey;
+
+    Widget notificationIcon() {
+      return Stack(
+        children: [
+          const Icon(Icons.notifications_active),
+          if (_unreadCount > 0)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text(
+                  _unreadCount > 99 ? '99+' : '$_unreadCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
 
     if (isWideScreen) {
       return AnimatedContainer(
@@ -104,26 +149,20 @@ class _StudentScreenState extends State<StudentScreen> {
                 labelType: NavigationRailLabelType.none,
                 selectedIconTheme: IconThemeData(color: selectedColor),
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
-                destinations: const [
+                destinations: [
                   NavigationRailDestination(
-                    icon: Icon(Icons.notifications_active),
-                    label: Text("Notice"),
-
+                    icon: notificationIcon(),
+                    label: const Text("Notice"),
                   ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.book),
                     label: Text("Resource"),
                   ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("CareerBank"),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.contact_page),
+                    label: Text("Contact"),
                   ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
-                    label: Text("Career Quizzes"),
-                  ),
-
-                  NavigationRailDestination(
+                  const NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("View Mode"),
                   ),
@@ -134,6 +173,7 @@ class _StudentScreenState extends State<StudentScreen> {
         ),
       );
     }
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       color: backgroundColor,
@@ -144,35 +184,27 @@ class _StudentScreenState extends State<StudentScreen> {
         backgroundColor: Colors.transparent,
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-        ),
+        selectedLabelStyle:
+        const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         unselectedLabelStyle: const TextStyle(fontSize: 12),
         elevation: 10,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_active),
+            icon: notificationIcon(),
             label: 'Notice',
           ),
-          BottomNavigationBarItem( // ✅ thêm Resource tab
+          const BottomNavigationBarItem(
             icon: Icon(Icons.book),
             label: 'Resource',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'CareerBank',
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.contact_page),
+            label: 'Contact',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'Career Quizzes',
-          ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
             label: 'View Mode',
           ),
-
-
         ],
       ),
     );
@@ -182,7 +214,6 @@ class _StudentScreenState extends State<StudentScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
-
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
 
     return AnimatedContainer(
@@ -250,7 +281,8 @@ class _StudentScreenState extends State<StudentScreen> {
                         );
                       }
 
-                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      final data =
+                      snapshot.data!.data() as Map<String, dynamic>;
                       final avatarUrl = data['avatarUrl'] as String?;
                       final name = data['name'] ?? "User";
 
@@ -259,17 +291,25 @@ class _StudentScreenState extends State<StudentScreen> {
                         children: [
                           CircleAvatar(
                             radius: 30,
-                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                            backgroundImage: (avatarUrl != null &&
+                                avatarUrl.isNotEmpty)
                                 ? NetworkImage(avatarUrl)
                                 : null,
                             child: (avatarUrl == null || avatarUrl.isEmpty)
-                                ? const Icon(Icons.person, size: 40, color: Colors.white)
+                                ? const Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Colors.white,
+                            )
                                 : null,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             "Hello, $name",
-                            style: const TextStyle(color: Colors.white, fontSize: 18),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
                           ),
                         ],
                       );
@@ -278,17 +318,15 @@ class _StudentScreenState extends State<StudentScreen> {
                 ),
                 ListTile(
                   leading: Icon(
-                    Icons.person,
+                    Icons.feedback_outlined,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
-                  title: const Text('Profile'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final result = await Navigator.push(
+                  title: const Text('Feedback'),
+                  onTap: () {
+                    Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      MaterialPageRoute(builder: (_) => const FeedbackPage()),
                     );
-                    if (result == true) _loadProfile();
                   },
                 ),
                 ListTile(
@@ -300,10 +338,8 @@ class _StudentScreenState extends State<StudentScreen> {
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.clear();
-                    // await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
-                    if (await googleSignIn.isSignedIn())
-                      await googleSignIn.signOut();
+                    if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
                     if (!mounted) return;
                     Navigator.pushReplacement(
                       context,
@@ -321,16 +357,14 @@ class _StudentScreenState extends State<StudentScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  // Màn hình chính
                   _screens[_selectedIndex],
                 ],
               ),
             ),
           ],
         ),
-        bottomNavigationBar: isWideScreen
-            ? null
-            : _buildNavigation(context, isDarkMode),
+        bottomNavigationBar:
+        isWideScreen ? null : _buildNavigation(context, isDarkMode),
       ),
     );
   }

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../DTO/SendNoticeDTO.dart';
+import '../DTO/SendNoticeDTO.dart';
 
 class SendNoticePage extends StatefulWidget {
   const SendNoticePage({super.key});
