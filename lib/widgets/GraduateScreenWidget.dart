@@ -59,6 +59,10 @@ class _GraduateScreenState extends State<GraduateScreen> {
           .doc(user.uid)
           .get();
 
+      print("📌 Doc ID: ${doc.id}");
+      print("📌 Exists: ${doc.exists}");
+      print("📌 Data: ${doc.data()}");
+
       if (doc.exists) {
         final data = doc.data()!;
         setState(() {
@@ -305,7 +309,7 @@ class _GraduateScreenState extends State<GraduateScreen> {
                   title: const Text('Logout'),
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
+                    // await prefs.clear();
                     await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())

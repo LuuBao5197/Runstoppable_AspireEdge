@@ -77,6 +77,10 @@ class _StudentScreenState extends State<StudentScreen> {
       final doc =
       await FirebaseFirestore.instance.collection('account').doc(user.uid).get();
 
+      print("📌 Doc ID: ${doc.id}");
+      print("📌 Exists: ${doc.exists}");
+      print("📌 Data: ${doc.data()}");
+      
       if (doc.exists) {
         final data = doc.data()!;
         setState(() {

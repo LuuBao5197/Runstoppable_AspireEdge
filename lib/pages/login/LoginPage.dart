@@ -97,14 +97,16 @@ class _LoginPageState extends State<LoginPage> {
 
         // 🔹 Lưu thông tin vào SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("last_email", result["email"]);
+        await prefs.setString("last_email", result["email"] ?? "");
         await prefs.setString("name", result["user_info"]["name"] ?? "");
         await prefs.setString("uid", result["user_info"]["uid"] ?? "");
+        await prefs.setString("photoUrl", result["user_info"]["photoUrl"] ?? ""); // thêm dòng này
+
 
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
       } catch (e) {
         print("❌ FirebaseAuth Custom Token login failed: $e");
@@ -203,7 +205,7 @@ class _LoginPageState extends State<LoginPage> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
       }
     } on FirebaseAuthException catch (_) {
