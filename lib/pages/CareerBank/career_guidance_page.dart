@@ -61,7 +61,7 @@ class _CareerGuidancePageState extends State<CareerGuidancePage> {
     super.initState();
     _youtubeController = YoutubePlayerController(
       initialVideoId: YoutubePlayer.convertUrlToId(
-          'https://www.youtube.com/watch?v=kR2tS1q-T2M')!,
+          'https://www.youtube.com/watch?v=0cHIyeLFYOk')!,
       flags: const YoutubePlayerFlags(
         autoPlay: false,
         mute: false,

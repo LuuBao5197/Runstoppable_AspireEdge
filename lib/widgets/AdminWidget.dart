@@ -13,6 +13,7 @@ import 'package:trackmentalhealth/pages/Resource/Admin/Videos/Video_admin_screen
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
 import '../pages/CareerBankAdminPage.dart';
+import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
 import '../pages/Quizzes/QuestionListScreen.dart';
@@ -158,7 +159,7 @@ class _AdminScreenState extends State<AdminScreen> {
         currentIndex: _selectedIndex,
         onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
         selectedLabelStyle: const TextStyle(
@@ -177,11 +178,11 @@ class _AdminScreenState extends State<AdminScreen> {
             label: 'Ebook',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.book),
+            icon: Icon(Icons.join_full),
             label: 'Career',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.book),
+            icon: Icon(Icons.video_collection),
             label: 'Video',
           ),
           BottomNavigationBarItem(
@@ -274,7 +275,8 @@ class _AdminScreenState extends State<AdminScreen> {
                         );
                       }
 
-                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      final data =
+                      snapshot.data!.data() as Map<String, dynamic>;
                       final avatarUrl = data['avatarUrl'] as String?;
                       final name = data['name'] ?? "User";
 
@@ -283,17 +285,25 @@ class _AdminScreenState extends State<AdminScreen> {
                         children: [
                           CircleAvatar(
                             radius: 30,
-                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                            backgroundImage:
+                            (avatarUrl != null && avatarUrl.isNotEmpty)
                                 ? NetworkImage(avatarUrl)
                                 : null,
                             child: (avatarUrl == null || avatarUrl.isEmpty)
-                                ? const Icon(Icons.person, size: 40, color: Colors.white)
+                                ? const Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Colors.white,
+                            )
                                 : null,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             "Hello, $name",
-                            style: const TextStyle(color: Colors.white, fontSize: 18),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
                           ),
                         ],
                       );
@@ -317,17 +327,15 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
                 ListTile(
                   leading: Icon(
-                    Icons.settings,
+                    Icons.feedback_outlined,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
-                  title: const Text('Settings'),
+                  title: const Text('Feedback'),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings Page chưa được tạo.'),
-                      ),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FeedbackPage()),
                     );
-                    Navigator.pop(context);
                   },
                 ),
                 ListTile(
@@ -339,7 +347,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
                     // await prefs.clear();
-                    await FirebaseAuth.instance.signOut();
+                    // await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())
                       await googleSignIn.signOut();
