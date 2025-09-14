@@ -57,6 +57,10 @@ class _StudentScreenState extends State<StudentScreen> {
           .doc(user.uid)
           .get();
 
+      print("📌 Doc ID: ${doc.id}");
+      print("📌 Exists: ${doc.exists}");
+      print("📌 Data: ${doc.data()}");
+      
       if (doc.exists) {
         final data = doc.data()!;
         setState(() {
