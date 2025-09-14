@@ -12,6 +12,7 @@ import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/career_guidance_page.dart';
 import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
+import '../pages/Resource/User/WishlistScreen.dart';
 import '../pages/Resource/resource_main.dart';
 import '../pages/login/LoginPage.dart';
 import '../pages/profile/ProfileScreen.dart';
@@ -358,6 +359,19 @@ class _StudentScreenState extends State<StudentScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const FeedbackPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.favorite,
+                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
+                  ),
+                  title: const Text('Wishlist'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WishlistScreen()),
                     );
                   },
                 ),
