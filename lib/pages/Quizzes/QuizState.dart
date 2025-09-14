@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -18,6 +19,7 @@ class QuizState extends ChangeNotifier {
   bool canSkipCurrentQuestion = false;
   bool isQuizCompleted = false;
   String quizCompletionMessage = "";
+  List<Map<String, dynamic>> finalResults = [];
 
   // !!! THAY THẾ URL NÀY BẰNG URL FUNCTION CỦA BẠN !!!
   final String _cloudFunctionUrl = "https://get-next-question-mn2447zabq-uc.a.run.app";
@@ -57,9 +59,10 @@ class QuizState extends ChangeNotifier {
 
         // 3. Kiểm tra xem quiz đã kết thúc chưa
         if (responseJson['status'] == 'completed') {
-          isQuizCompleted = true;
-          quizCompletionMessage = responseJson['message'] ?? "Quiz Finished!";
-          currentQuestion = null;
+          await processFinalScores(responseJson['final_scores']);
+          // isQuizCompleted = true;
+          // quizCompletionMessage = responseJson['message'] ?? "Quiz Finished!";
+          // currentQuestion = null;
         } else {
           // 4. Cập nhật câu hỏi mới
           currentQuestion = responseJson;
@@ -81,6 +84,31 @@ class QuizState extends ChangeNotifier {
       // Có thể gán một thông báo lỗi để hiển thị trên UI
     }
 
+    isLoading = false;
+    notifyListeners();
+  }
+
+  // HÀM MỚI: Xử lý điểm số cuối cùng
+  Future<void> processFinalScores(Map<String, dynamic> finalScores) async {
+    // Sắp xếp các nhóm điểm từ cao đến thấp
+    final sortedScores = finalScores.entries.toList()
+      ..sort((a, b) => (b.value as int).compareTo(a.value as int));
+
+    // Lấy ra 2 nhóm có điểm cao nhất
+    final topTwoCategories = sortedScores.take(2).toList();
+
+    // Lấy dữ liệu gợi ý nghề nghiệp từ Firestore
+    final db = FirebaseFirestore.instance;
+    for (var categoryEntry in topTwoCategories) {
+      final docId = categoryEntry.key;
+      final docSnapshot = await db.collection('career_suggestions').doc(docId).get();
+      if (docSnapshot.exists) {
+        finalResults.add(docSnapshot.data()!);
+      }
+    }
+
+    // Báo cho giao diện biết là quiz đã xong và có kết quả
+    isQuizCompleted = true;
     isLoading = false;
     notifyListeners();
   }

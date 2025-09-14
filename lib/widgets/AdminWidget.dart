@@ -1,119 +1,40 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
-import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
-import 'package:trackmentalhealth/pages/NotificationScreen.dart';
-import 'package:trackmentalhealth/pages/Quizzes/CareerQuizDashboardScreen.dart';
-import 'package:trackmentalhealth/pages/Quizzes/QuestionListScreen.dart';
-import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
-import 'package:trackmentalhealth/pages/Quizzes/QuizScreenLikert.dart';
-import 'package:trackmentalhealth/pages/Quizzes/SurveyScreen.dart';
-import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
-import 'package:trackmentalhealth/pages/ProfilePage.dart';
-import 'package:trackmentalhealth/pages/SearchPage.dart';
-import 'package:trackmentalhealth/pages/SplashScreen.dart';
-import 'package:trackmentalhealth/pages/login/authentication.dart';
-import 'package:trackmentalhealth/pages/login/google_auth.dart';
-import 'package:trackmentalhealth/pages/utils/permissions.dart';
-import 'package:trackmentalhealth/pages/login/LoginPage.dart';
-import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
-import 'core/constants/theme_provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Blogs/Blog_admin_screen.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Ebooks/Ebook_admin_screen.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Videos/Video_admin_screen.dart';
 
+import '../core/constants/theme_provider.dart';
+import '../pages/CareerBank/CareerBankPage.dart';
+import '../pages/NotificationScreen.dart';
+import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
+import '../pages/Quizzes/QuestionListScreen.dart';
+import '../pages/Resource/resource_main.dart';
+import '../pages/login/LoginPage.dart';
+import '../pages/profile/ProfileScreen.dart';
 
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Init firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  // Config firebase offline persistence
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
-  print("🔥 Firebase connected successfully");
-
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: const AspireEdgeApp(),
-    ),
-  );
-
-  // Suggest Permission
-  Future.microtask(() async {
-    await requestAppPermissions();
-  });
-}
-
-class AspireEdgeApp extends StatelessWidget {
-  const AspireEdgeApp({super.key});
+class AdminScreen extends StatefulWidget {
+  const AdminScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    return MaterialApp(
-      title: 'Aspire Edge',
-      debugShowCheckedModeBanner: false,
-      themeMode: themeProvider.themeMode,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.teal,
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.teal,
-          elevation: 2,
-        ),
-      ),
-      darkTheme: ThemeData.dark().copyWith(
-        colorScheme: const ColorScheme.dark(
-          primary: Colors.teal,
-          secondary: Colors.tealAccent,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E1E1E),
-          foregroundColor: Colors.tealAccent,
-        ),
-      ),
-      home: SplashScreen(),
-    );
-  }
+  State<AdminScreen> createState() => _AdminScreenState();
 }
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
-
-  @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
+class _AdminScreenState extends State<AdminScreen> {
   int _selectedIndex = 0;
   String? name;
   String? avatarUrl;
   bool _loadingProfile = true;
   bool hasNewNotification = false;
   final List<Widget> _screens = [
-    const NotificationScreen(),
-    const ResourceMain(),
-    const CareerBankPage(),
-    const CareerDashboardScreen()
-    // const QuizScreen(),
-    // const QuizScreenLiker(),
-    // const SurveyScreen()
-    // const QuestionListScreen() danh cho giao dien admin
+    const AdminBlogScreen(),
+    const AdminEbookScreen(),
+    const AdminVideosScreen(),
+    const QuestionListScreen()
   ];
 
   @override
@@ -190,16 +111,19 @@ class _MainScreenState extends State<MainScreen> {
                 destinations: const [
                   NavigationRailDestination(
                     icon: Icon(Icons.notifications_active),
-                    label: Text("Notice"),
-
+                    label: Text("Blog"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.mood),
-                    label: Text("CareerBank"),
+                    label: Text("Ebook"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
-                    label: Text("Career Quizzes"),
+                    label: Text("Video"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.quiz),
+                    label: Text("Quiz"),
                   ),
                 ],
               ),
@@ -208,7 +132,6 @@ class _MainScreenState extends State<MainScreen> {
         ),
       );
     }
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       color: backgroundColor,
@@ -228,19 +151,19 @@ class _MainScreenState extends State<MainScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications_active),
-            label: 'Notice',
+            label: 'Blog',
           ),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
-            label: 'Resource',
+            label: 'Ebook',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
-            label: 'CareerBank',
+            label: 'Video',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
-            label: 'Career Quizzes',
+            label: 'Quizzes',
           ),
 
         ],
