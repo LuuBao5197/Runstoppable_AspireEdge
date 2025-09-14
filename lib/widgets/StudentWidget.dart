@@ -12,6 +12,7 @@ import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/career_guidance_page.dart';
 import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
+import '../pages/Resource/User/Videos/TestimonialsCarousel.dart' show TestimonialsCarousel;
 import '../pages/Resource/resource_main.dart';
 import '../pages/login/LoginPage.dart';
 import '../services/NotificationService.dart';
@@ -38,6 +39,7 @@ class _StudentScreenState extends State<StudentScreen> {
     const ResourceMain(),
     const ContactUsPage(),
     const CareerGuidancePage(),
+    TestimonialsCarousel(),
     const CategorySelectionScreen(),
 
   ];
@@ -171,6 +173,10 @@ class _StudentScreenState extends State<StudentScreen> {
                     label: Text("CareerGuidancePage"),
                   ),
                   const NavigationRailDestination(
+                    icon: Icon(Icons.contact_page),
+                    label: Text("TestimonialsCarousel"),
+                  ),
+                  const NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("View Mode"),
                   ),
@@ -212,6 +218,10 @@ class _StudentScreenState extends State<StudentScreen> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.contact_page),
             label: 'CareerGuidancePage',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_rounded),
+            label: 'TestimonialsCarousel',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
