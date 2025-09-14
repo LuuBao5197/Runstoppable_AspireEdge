@@ -18,6 +18,8 @@ class _ContactUsPageState extends State<ContactUsPage> {
   String? name;
   String? email;
   bool _loadingProfile = true;
+  bool _sending = false;
+
 
   late TextEditingController nameController;
   late TextEditingController emailController;
@@ -62,6 +64,46 @@ class _ContactUsPageState extends State<ContactUsPage> {
       throw Exception("Could not open Google Maps.");
     }
   }
+
+  Future<void> _sendMessage() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final message = messageController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || message.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields")),
+      );
+      return;
+    }
+
+    setState(() => _sending = true);
+
+    try {
+      await FirebaseFirestore.instance.collection('contacts').add({
+        'email': email,
+        'message': message,
+        'userId': FirebaseAuth.instance.currentUser?.uid ?? 'anonymous',
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Message sent successfully!")),
+      );
+
+      // Clear message field after sending
+      messageController.clear();
+    } catch (e) {
+      debugPrint("Send message error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to send message.")),
+      );
+    } finally {
+      setState(() => _sending = false);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -220,16 +262,20 @@ class _ContactUsPageState extends State<ContactUsPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          debugPrint("📨 Name: ${nameController.text}");
-                          debugPrint("📨 Email: ${emailController.text}");
-                          debugPrint("📨 Msg: ${messageController.text}");
-                        },
-                        icon: const Icon(Icons.send),
-                        label: const Text(
-                          "Send",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                        onPressed: _sending ? null : _sendMessage,
+                        icon: _sending
+                            ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                            : const Icon(Icons.send),
+                        label: Text(
+                          _sending ? "Sending..." : "Send",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),

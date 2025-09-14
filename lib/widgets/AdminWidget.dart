@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/Admin/AdminContactPage.dart';
 import 'package:trackmentalhealth/pages/Admin/AdminFeedbackPage.dart';
+import 'package:trackmentalhealth/services/SendNoticePage.dart';
 
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
@@ -30,6 +32,7 @@ class _AdminScreenState extends State<AdminScreen> {
   bool hasNewNotification = false;
   final List<Widget> _screens = [
     const AdminFeedbackPage(),
+    const AdminContactPage(),
     const ResourceMain(),
     const CareerBankPage(),
     const QuestionListScreen()
@@ -110,7 +113,10 @@ class _AdminScreenState extends State<AdminScreen> {
                   NavigationRailDestination(
                     icon: Icon(Icons.feed_outlined),
                     label: Text("Feedback"),
-
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.contact_page),
+                    label: Text("Contact"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.mood),
@@ -148,6 +154,10 @@ class _AdminScreenState extends State<AdminScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.feed_outlined),
             label: 'Feedback',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contact_page),
+            label: 'Contact',
           ),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
