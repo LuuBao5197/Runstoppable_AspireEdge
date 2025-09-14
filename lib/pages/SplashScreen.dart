@@ -21,9 +21,8 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     _initializeAppAndNavigate();
   }
-
   Future<void> _initializeAppAndNavigate() async {
-    // Handle data sync
+    // Đồng bộ dữ liệu (an toàn vì đã có try-catch)
     try {
       print("Starting data sync...");
       await DatabaseHelper.instance.syncQuizDataIfNeeded();
@@ -31,35 +30,50 @@ class _SplashScreenState extends State<SplashScreen> {
     } catch (e) {
       print("Error during sync: $e");
     }
-    // 2. Sau khi đồng bộ, kiểm tra trạng thái đăng nhập
-    await FirebaseAuth.instance.currentUser?.reload();
-    final user = FirebaseAuth.instance.currentUser;
-    final idTokenResult = await user!.getIdTokenResult(true);
 
-    // 3. Điều hướng dựa trên kết quả
-    if (mounted) {
-      if (user != null) {
+    // Lấy người dùng hiện tại
+    final user = FirebaseAuth.instance.currentUser;
+
+    // SỬA LỖI: Kiểm tra user có null hay không TRƯỚC TIÊN
+    if (user != null) {
+      // Nếu người dùng tồn tại (đã đăng nhập)
+      // Di chuyển toàn bộ logic cần user vào trong khối if này
+      try {
+        await user.reload(); // Làm mới thông tin user
+        final idTokenResult = await user.getIdTokenResult(true); // Lấy token và custom claims
 
         print("Custom claims: ${idTokenResult.claims}");
-        if(idTokenResult.claims?['admin'] == true){
+
+        if (mounted) {
+          if (idTokenResult.claims?['admin'] == true) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const AdminScreen()),
+            );
+          } else {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const CategorySelectionScreen()),
+            );
+          }
+        }
+      } catch (e) {
+        // Xử lý lỗi có thể xảy ra khi reload hoặc lấy token (ví dụ: mất mạng)
+        print("Error fetching user token: $e");
+        // Nếu lỗi, coi như chưa đăng nhập và đưa về trang Login
+        if (mounted) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AdminScreen()), // Hoặc MainScreen của bạn
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const CategorySelectionScreen()), // Hoặc MainScreen của bạn
+            MaterialPageRoute(builder: (_) => const LoginPage()),
           );
         }
-
-      } else {
-        // handle when not login
+      }
+    } else {
+      // Nếu người dùng không tồn tại (chưa đăng nhập)
+      if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginPage()),
         );
       }
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
