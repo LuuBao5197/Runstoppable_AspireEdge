@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../tag_filter_dialog.dart';
 import '../../Admin/Ebooks/add_ebook_screen.dart';
 import 'detail_ebook_screen.dart';
- // import màn hình detail
 
 class EbookScreen extends StatefulWidget {
   const EbookScreen({super.key});
@@ -14,6 +14,7 @@ class EbookScreen extends StatefulWidget {
 
 class _EbookScreenState extends State<EbookScreen> {
   final firestore = FirebaseFirestore.instance;
+  final userId = FirebaseAuth.instance.currentUser!.uid; // 👈 lấy id user
   String searchQuery = "";
 
   final List<String> allTags = [
@@ -100,13 +101,20 @@ class _EbookScreenState extends State<EbookScreen> {
           return ListView(
             children: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
+              final ebookId = doc.id;
+
+              final favMap = Map<String, dynamic>.from(data["favorites"] ?? {});
+              final markMap = Map<String, dynamic>.from(data["bookmarks"] ?? {});
+
+              final isFav = favMap[userId] == true;
+              final isMark = markMap[userId] == true;
+
               return GestureDetector(
                 onTap: () {
-                  // Khi bấm mở detail
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => EbookDetailScreen(ebookId: doc.id),
+                      builder: (_) => EbookDetailScreen(ebookId: ebookId),
                     ),
                   );
                 },
@@ -147,22 +155,32 @@ class _EbookScreenState extends State<EbookScreen> {
                                 ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(
-                                data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
-                                color: Colors.red,
-                              ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
-                                "isFavorite": !(data["isFavorite"] ?? false),
-                              }),
+                            Column(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    isFav ? Icons.favorite : Icons.favorite_border,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    final ebookRef = firestore.collection("ebooks").doc(ebookId);
+                                    if (isFav) {
+                                      ebookRef.update({"favorites.$userId": FieldValue.delete()});
+                                    } else {
+                                      ebookRef.update({"favorites.$userId": true});
+                                    }
+                                  },
+                                ),
+                                Text(favMap.length.toString()),
+                              ],
                             ),
                             IconButton(
-                              icon: Icon(
-                                data["isBookmark"] == true ? Icons.bookmark : Icons.bookmark_border,
-                              ),
-                              onPressed: () => firestore.collection("ebooks").doc(doc.id).update({
-                                "isBookmark": !(data["isBookmark"] ?? false),
-                              }),
+                              icon: Icon(isMark ? Icons.bookmark : Icons.bookmark_border),
+                              onPressed: () {
+                                firestore.collection("ebooks").doc(ebookId).update({
+                                  "bookmarks.$userId": !isMark,
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -174,12 +192,6 @@ class _EbookScreenState extends State<EbookScreen> {
             }).toList(),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEbookScreen()));
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }

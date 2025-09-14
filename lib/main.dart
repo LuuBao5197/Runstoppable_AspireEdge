@@ -6,7 +6,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/pages/Admin/SendNoticePage.dart';
+import 'package:trackmentalhealth/pages/FeedbackPage.dart';
+import 'package:trackmentalhealth/services/SendNoticePage.dart';
 import 'package:trackmentalhealth/pages/CareerBank/CareerBankPage.dart';
 import 'package:trackmentalhealth/pages/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/CareerQuizDashboardScreen.dart';
@@ -14,6 +15,7 @@ import 'package:trackmentalhealth/pages/Quizzes/QuestionListScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreenLikert.dart';
 import 'package:trackmentalhealth/pages/Quizzes/SurveyScreen.dart';
+import 'package:trackmentalhealth/pages/Resource/User/WishlistScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
@@ -28,15 +30,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // File này được tạo tự động khi bạn chạy `flutterfire configure`
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Init firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Config firebase offline persistence
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
@@ -132,6 +130,7 @@ class _MainScreenState extends State<MainScreen> {
     ].request();
   }
 
+
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
 
@@ -163,7 +162,6 @@ class _MainScreenState extends State<MainScreen> {
       setState(() => _loadingProfile = false);
     }
   }
-
 
   void _onTabTapped(int index) {
     setState(() {
@@ -200,7 +198,6 @@ class _MainScreenState extends State<MainScreen> {
                   NavigationRailDestination(
                     icon: Icon(Icons.notifications_active),
                     label: Text("Notice"),
-
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.mood),
@@ -239,19 +236,16 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.notifications_active),
             label: 'Notice',
           ),
-          BottomNavigationBarItem( // ✅ thêm Resource tab
+          BottomNavigationBarItem(
+            // ✅ thêm Resource tab
             icon: Icon(Icons.book),
             label: 'Resource',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'CareerBank',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'CareerBank'),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
             label: 'Career Quizzes',
           ),
-
         ],
       ),
     );
@@ -329,7 +323,8 @@ class _MainScreenState extends State<MainScreen> {
                         );
                       }
 
-                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>;
                       final avatarUrl = data['avatarUrl'] as String?;
                       final name = data['name'] ?? "User";
 
@@ -338,17 +333,25 @@ class _MainScreenState extends State<MainScreen> {
                         children: [
                           CircleAvatar(
                             radius: 30,
-                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                            backgroundImage:
+                                (avatarUrl != null && avatarUrl.isNotEmpty)
                                 ? NetworkImage(avatarUrl)
                                 : null,
                             child: (avatarUrl == null || avatarUrl.isEmpty)
-                                ? const Icon(Icons.person, size: 40, color: Colors.white)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 40,
+                                    color: Colors.white,
+                                  )
                                 : null,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             "Hello, $name",
-                            style: const TextStyle(color: Colors.white, fontSize: 18),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
                           ),
                         ],
                       );
@@ -372,17 +375,15 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 ListTile(
                   leading: Icon(
-                    Icons.settings,
+                    Icons.feedback_outlined,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
-                  title: const Text('Settings'),
+                  title: const Text('Feedback'),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings Page chưa được tạo.'),
-                      ),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FeedbackPage()),
                     );
-                    Navigator.pop(context);
                   },
                 ),
                 ListTile(

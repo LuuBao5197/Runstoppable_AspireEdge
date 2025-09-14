@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloudinary_public/cloudinary_public.dart';
-import 'package:image_picker/image_picker.dart';
-import '../../../../utils/showToast.dart';
-import '../../Admin/Blogs/add_blog_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../tag_filter_dialog.dart';
 import 'detail_blog_screen.dart';
-import 'dart:math';
+import '../../../../utils/showToast.dart';
 
 class BlogScreen extends StatefulWidget {
   const BlogScreen({super.key});
@@ -17,13 +15,8 @@ class BlogScreen extends StatefulWidget {
 
 class _BlogScreenState extends State<BlogScreen> {
   final firestore = FirebaseFirestore.instance;
-  final _titleController = TextEditingController();
-  final _descController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
-  final cloudinary = CloudinaryPublic('dbghucaix', 'ml_default');
-
-  String? thumbnailUrl;
-  String searchQuery = ""; // query để search
+  final user = FirebaseAuth.instance.currentUser; // user hiện tại
+  String searchQuery = "";
 
   // filter tags
   final List<String> allTags = [
@@ -38,7 +31,7 @@ class _BlogScreenState extends State<BlogScreen> {
     "Leadership",
     "Entrepreneurship",
   ];
-  Map<String, int> selectedTags = {}; // tag → 0 (none), 1 (include), -1 (exclude)
+  Map<String, int> selectedTags = {};
 
   @override
   void initState() {
@@ -46,77 +39,6 @@ class _BlogScreenState extends State<BlogScreen> {
     for (var t in allTags) {
       selectedTags[t] = 0;
     }
-  }
-
-  Future<void> pickThumbnail() async {
-    final img = await _picker.pickImage(source: ImageSource.gallery);
-    if (img == null) return;
-    final res = await cloudinary.uploadFile(CloudinaryFile.fromFile(img.path));
-    setState(() => thumbnailUrl = res.secureUrl);
-  }
-
-  Future<void> saveBlog() async {
-    if (_titleController.text.isEmpty ||
-        _descController.text.isEmpty ||
-        thumbnailUrl == null) {
-      showToast("⚠️ Fill all fields", "warning");
-      return;
-    }
-    await firestore.collection("blogs").add({
-      "title": _titleController.text.trim(),
-      "description": _descController.text.trim(),
-      "thumbnail": thumbnailUrl,
-      "tags": ["Food", "Education"],
-      "isFavorite": false,
-      "isBookmark": false,
-      "createdAt": FieldValue.serverTimestamp(),
-    });
-    showToast("✅ Blog saved", "success");
-    _titleController.clear();
-    _descController.clear();
-    setState(() => thumbnailUrl = null);
-  }
-
-  void showAddBlogDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Add Blog"),
-        content: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: "Title"),
-              ),
-              TextField(
-                controller: _descController,
-                decoration: const InputDecoration(labelText: "Description"),
-              ),
-              ElevatedButton.icon(
-                onPressed: pickThumbnail,
-                icon: const Icon(Icons.image),
-                label: const Text("Select Thumbnail"),
-              ),
-              if (thumbnailUrl != null)
-                Image.network(thumbnailUrl!, height: 100),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              saveBlog();
-              Navigator.pop(context);
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
-    );
   }
 
   void openFilterDialog() async {
@@ -132,23 +54,13 @@ class _BlogScreenState extends State<BlogScreen> {
       setState(() {
         selectedTags = result;
       });
-
-      final include = selectedTags.entries
-          .where((e) => e.value == 1)
-          .map((e) => e.key)
-          .toList();
-      final exclude = selectedTags.entries
-          .where((e) => e.value == -1)
-          .map((e) => e.key)
-          .toList();
-
-      debugPrint("Include: $include");
-      debugPrint("Exclude: $exclude");
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = user?.uid;
+
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -173,13 +85,12 @@ class _BlogScreenState extends State<BlogScreen> {
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: firestore.collection("blogs").snapshots(), // ko orderBy
+        stream: firestore.collection("blogs").snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Convert to list và shuffle
           final docs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final tags = List<String>.from(data["tags"] ?? []);
@@ -200,15 +111,20 @@ class _BlogScreenState extends State<BlogScreen> {
               final title = (data["title"] ?? "").toString().toLowerCase();
               if (!title.contains(searchQuery)) return false;
             }
-
             return true;
           }).toList();
-
-          docs.shuffle(Random()); // <- shuffle mỗi lần build
 
           return ListView(
             children: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
+              final favMap = Map<String, dynamic>.from(data["favorites"] ?? {});
+              final markMap = Map<String, dynamic>.from(data["bookmarks"] ?? {});
+
+              final isFav =
+                  currentUserId != null && favMap[currentUserId] == true;
+              final isMark =
+                  currentUserId != null && markMap[currentUserId] == true;
+
               return InkWell(
                 onTap: () {
                   Navigator.push(
@@ -225,7 +141,8 @@ class _BlogScreenState extends State<BlogScreen> {
                     children: [
                       if (data["thumbnail"] != null)
                         ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(8)),
                           child: Image.network(
                             data["thumbnail"],
                             height: 180,
@@ -260,23 +177,51 @@ class _BlogScreenState extends State<BlogScreen> {
                                 ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(
-                                data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
-                                color: Colors.red,
+                            if (currentUserId != null) ...[
+                              Column(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      isFav
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () {
+                                      final blogRef = firestore.collection("blogs").doc(doc.id);
+                                      if (isFav) {
+                                        // Xóa favorite
+                                        blogRef.update({
+                                          "favorites.$currentUserId": FieldValue.delete(),
+                                        });
+                                      } else {
+                                        // Thêm favorite
+                                        blogRef.update({
+                                          "favorites.$currentUserId": true,
+                                        });
+                                      }
+                                    },
+                                  ),
+                                  // Hiển thị số người favorite
+                                  Text(favMap.length.toString()),
+                                ],
                               ),
-                              onPressed: () => firestore.collection("blogs").doc(doc.id).update({
-                                "isFavorite": !(data["isFavorite"] ?? false),
-                              }),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                data["isBookmark"] == true ? Icons.bookmark : Icons.bookmark_border,
+                              IconButton(
+                                icon: Icon(
+                                  isMark
+                                      ? Icons.bookmark
+                                      : Icons.bookmark_border,
+                                ),
+                                onPressed: () {
+                                  firestore
+                                      .collection("blogs")
+                                      .doc(doc.id)
+                                      .update({
+                                    "bookmarks.$currentUserId": !isMark,
+                                  });
+                                },
                               ),
-                              onPressed: () => firestore.collection("blogs").doc(doc.id).update({
-                                "isBookmark": !(data["isBookmark"] ?? false),
-                              }),
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -288,15 +233,7 @@ class _BlogScreenState extends State<BlogScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddBlogScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+      // Không còn nút thêm blog nữa
     );
   }
 }

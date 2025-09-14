@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../DTO/SendNoticeDTO.dart';
+import '../DTO/SendNoticeDTO.dart';
 
 class SendNoticePage extends StatefulWidget {
   const SendNoticePage({super.key});
@@ -8,8 +8,6 @@ class SendNoticePage extends StatefulWidget {
   @override
   State<SendNoticePage> createState() => _SendNoticePageState();
 }
-
-
 class _SendNoticePageState extends State<SendNoticePage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();

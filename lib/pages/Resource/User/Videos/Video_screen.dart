@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../tag_filter_dialog.dart';
 import '../../Admin/Videos/add_video_screen.dart';
 import 'detail_video_screen.dart';
@@ -13,6 +14,7 @@ class VideoScreen extends StatefulWidget {
 
 class _VideoScreenState extends State<VideoScreen> {
   final firestore = FirebaseFirestore.instance;
+  final userId = FirebaseAuth.instance.currentUser!.uid; // 👈 id user
   String searchQuery = "";
 
   // filter tags
@@ -112,12 +114,20 @@ class _VideoScreenState extends State<VideoScreen> {
           return ListView(
             children: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
+              final videoId = doc.id;
+
+              final favMap = Map<String, dynamic>.from(data["favorites"] ?? {});
+              final markMap = Map<String, dynamic>.from(data["bookmarks"] ?? {});
+
+              final isFav = favMap[userId] == true;
+              final isMark = markMap[userId] == true;
+
               return InkWell(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => VideoDetailScreen(videoId: doc.id),
+                      builder: (_) => VideoDetailScreen(videoId: videoId),
                     ),
                   );
                 },
@@ -128,7 +138,8 @@ class _VideoScreenState extends State<VideoScreen> {
                     children: [
                       if (data["thumbnail"] != null)
                         ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                          borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(8)),
                           child: Image.network(
                             data["thumbnail"],
                             height: 180,
@@ -147,33 +158,51 @@ class _VideoScreenState extends State<VideoScreen> {
                                 children: [
                                   Text(
                                     data["title"] ?? "",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold, fontSize: 16),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     data["description"] ?? "",
-                                    maxLines: 2,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(
-                                data["isFavorite"] == true ? Icons.favorite : Icons.favorite_border,
-                                color: Colors.red,
-                              ),
-                              onPressed: () => firestore.collection("videos").doc(doc.id).update({
-                                "isFavorite": !(data["isFavorite"] ?? false),
-                              }),
+                            Column(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    isFav ? Icons.favorite : Icons.favorite_border,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    final videoRef =
+                                    firestore.collection("videos").doc(videoId);
+                                    if (isFav) {
+                                      videoRef.update({
+                                        "favorites.$userId": FieldValue.delete(),
+                                      });
+                                    } else {
+                                      videoRef.update({
+                                        "favorites.$userId": true,
+                                      });
+                                    }
+                                  },
+                                ),
+                                Text(favMap.length.toString()),
+                              ],
                             ),
                             IconButton(
-                              icon: Icon(
-                                data["isBookmark"] == true ? Icons.bookmark : Icons.bookmark_border,
-                              ),
-                              onPressed: () => firestore.collection("videos").doc(doc.id).update({
-                                "isBookmark": !(data["isBookmark"] ?? false),
-                              }),
+                              icon: Icon(isMark ? Icons.bookmark : Icons.bookmark_border),
+                              onPressed: () {
+                                firestore.collection("videos").doc(videoId).update({
+                                  "bookmarks.$userId": !isMark,
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -185,15 +214,6 @@ class _VideoScreenState extends State<VideoScreen> {
             }).toList(),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddVideoScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }
