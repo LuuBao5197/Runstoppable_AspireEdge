@@ -1,10 +1,16 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:trackmentalhealth/main.dart';
+import 'package:trackmentalhealth/pages/SplashScreen.dart';
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,6 +27,104 @@ class _LoginPageState extends State<LoginPage> {
   bool _isObscure = true;
   bool _isLoading = false;
   String? _error;
+
+  String? _savedEmail; // 👈 email đã lưu từ lần login trước
+  bool _useSavedEmail = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString("last_email");
+    if (email != null && email.isNotEmpty) {
+      setState(() {
+        _savedEmail = email;
+        _emailController.text = email;
+        _useSavedEmail = true;
+      });
+    } else {
+      print("Can't get email");
+    }
+  }
+
+  // --- Face Verification
+  Future<Map<String, dynamic>?> verifyFace(File image, String email) async {
+    try {
+      final uri = Uri.parse("http://10.0.2.2:8080/verify_face");
+      var request = http.MultipartRequest('POST', uri);
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'image',
+        image.path,
+        filename: p.basename(image.path),
+      ));
+      request.fields['email'] = email;
+
+      final response = await request.send();
+      final resBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        return jsonDecode(resBody);
+      } else {
+        print("❌ Failed: $resBody");
+        return null;
+      }
+    } catch (e) {
+      print("⚠️ Error: $e");
+      return null;
+    }
+  }
+
+  // --- Face Login
+  Future<void> _handleFaceLogin() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.camera);
+    if (picked == null) return;
+
+    setState(() => _isLoading = true);
+
+    final image = File(picked.path);
+    final result = await verifyFace(image, _emailController.text.trim());
+
+    if (result != null && result["success"] == true && result["customToken"] != null) {
+      try {
+        // 🔹 Sign in với FirebaseAuth bằng Custom Token
+        await FirebaseAuth.instance.signInWithCustomToken(result["customToken"]);
+
+        // 🔹 Lưu thông tin vào SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("last_email", result["email"] ?? "");
+        await prefs.setString("name", result["user_info"]["name"] ?? "");
+        await prefs.setString("uid", result["user_info"]["uid"] ?? "");
+        await prefs.setString("photoUrl", result["user_info"]["photoUrl"] ?? ""); // thêm dòng này
+
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
+        );
+      } catch (e) {
+        print("❌ FirebaseAuth Custom Token login failed: $e");
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Firebase login failed")),
+        );
+      }
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Face verification failed")),
+      );
+    }
+
+    setState(() => _isLoading = false);
+  }
+
 
   // --- Email/Password Login
   Future<void> _handleEmailLogin() async {
@@ -48,10 +152,12 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('email', user.email ?? '');
         await prefs.setString('name', user.displayName ?? '');
         await prefs.setString('photoUrl', user.photoURL ?? '');
+        await prefs.setString('last_email', user.email ?? ""); // 👈 lưu email
 
+        _loadSavedEmail();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
       }
     } on FirebaseAuthException catch (e) {
@@ -95,10 +201,11 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('email', user.email ?? '');
         await prefs.setString('name', user.displayName ?? '');
         await prefs.setString('photoUrl', user.photoURL ?? '');
+        await prefs.setString('last_email', user.email ?? ""); // 👈 lưu email
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
       }
     } on FirebaseAuthException catch (_) {
@@ -108,6 +215,17 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  // --- Another account (xóa email lưu)
+  Future<void> _switchAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("last_email");
+    setState(() {
+      _savedEmail = null;
+      _useSavedEmail = false;
+      _emailController.clear();
+    });
   }
 
   @override
@@ -148,17 +266,44 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // --- Email Field
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.person),
-                      border: OutlineInputBorder(),
+
+                  // --- Email field (ẩn nếu đã có savedEmail)
+                  if (!_useSavedEmail)
+                    TextField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.person),
+                        border: OutlineInputBorder(),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.email, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _savedEmail ?? "",
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis, // tránh email dài bị tràn
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _switchAccount,
+                            child: const Text("Another account"),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 8),
-                  // --- Password Field
+                  // --- Password field
                   TextField(
                     controller: _passwordController,
                     obscureText: _isObscure,
@@ -177,6 +322,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
+
                   // --- Error Message
                   if (_error != null)
                     Align(
@@ -189,6 +335,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
+
                   // --- Login Button
                   SizedBox(
                     width: double.infinity,
@@ -201,27 +348,35 @@ class _LoginPageState extends State<LoginPage> {
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                           : const Text('Login'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
+
                   // --- Google Login
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      minimumSize: const Size(double.infinity, 50),
-                      side: const BorderSide(color: Colors.grey),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  if (!_useSavedEmail)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        minimumSize: const Size(double.infinity, 50),
+                        side: const BorderSide(color: Colors.grey),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: _isLoading ? null : _handleGoogleLogin,
+                      icon: Image.asset('assets/images/google_logo.png', height: 24),
+                      label: const Text("Sign in with Google"),
                     ),
-                    onPressed: _isLoading ? null : _handleGoogleLogin,
-                    icon: Image.asset('assets/images/google_logo.png', height: 24),
-                    label: const Text("Sign in with Google"),
+
+                  const SizedBox(height: 16),
+
+                  // --- Face Login Button
+                  ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _handleFaceLogin,
+                    icon: const Icon(Icons.face),
+                    label: const Text("Login with Face"),
                   ),
                   const SizedBox(height: 12),
+
                   // --- Forgot Password
                   TextButton(
                     onPressed: () {
@@ -232,22 +387,24 @@ class _LoginPageState extends State<LoginPage> {
                     },
                     child: const Text('Forgot password?'),
                   ),
-                  // --- Register Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Don't have an account?"),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const RegisterPage()),
-                          );
-                        },
-                        child: const Text('Register'),
-                      ),
-                    ],
-                  ),
+
+                  // --- Register Link (ẩn nếu dùng savedEmail)
+                  if (!_useSavedEmail)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Don't have an account?"),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const RegisterPage()),
+                            );
+                          },
+                          child: const Text('Register'),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),

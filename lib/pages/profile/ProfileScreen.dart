@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/main.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
@@ -40,19 +41,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    setState(() => _isLoading = true);
     try {
-      final uid = _auth.currentUser?.uid;
-      if (uid == null) return;
+      final email = _auth.currentUser?.email ?? await SharedPreferences.getInstance().then((p) => p.getString("last_email"));
+      if (email == null) {
+        debugPrint("No email found");
+        setState(() => _isLoading = false);
+        return;
+      }
 
-      final doc = await _firestore.collection("account").doc(uid).get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        _avatarUrl = data["avatarUrl"];
-        _nameController.text = data["name"] ?? "";
-        _phoneController.text = data["phone"] ?? "";
-        _addressController.text = data["address"] ?? "";
-        _emailController.text = data["email"] ?? "";
-        _role = data["role"] ?? "students";
+      final query = await _firestore
+          .collection("account")
+          .where("email", isEqualTo: email)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        final data = query.docs.first.data();
+        setState(() {
+          _avatarUrl = data["avatarUrl"];
+          _nameController.text = data["name"] ?? "";
+          _phoneController.text = data["phone"] ?? "";
+          _addressController.text = data["address"] ?? "";
+          _emailController.text = data["email"] ?? "";
+          _role = data["role"] ?? "students";
+        });
       }
     } catch (e) {
       debugPrint("Error loading profile: $e");
@@ -60,6 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => _isLoading = false);
   }
+
 
   Future<String?> _uploadToCloudinary(File file) async {
     final url = "https://api.cloudinary.com/v1_1/$cloudName/image/upload";

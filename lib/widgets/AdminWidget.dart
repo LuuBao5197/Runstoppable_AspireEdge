@@ -4,9 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Blogs/Blog_admin_screen.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Ebooks/Ebook_admin_screen.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Videos/Video_admin_screen.dart';
 
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
+import '../pages/CareerBankAdminPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
 import '../pages/Quizzes/QuestionListScreen.dart';
@@ -28,11 +32,12 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _loadingProfile = true;
   bool hasNewNotification = false;
   final List<Widget> _screens = [
-    const NotificationScreen(),
-    const ResourceMain(),
-    const CareerBankPage(),
-    // const CareerDashboardScreen()
-    const QuestionListScreen()
+    const AdminBlogScreen(),
+    const AdminEbookScreen(),
+    const CareerBankAdminPage(),
+    const AdminVideosScreen(),
+    const QuestionListScreen(),
+
   ];
 
   @override
@@ -109,16 +114,23 @@ class _AdminScreenState extends State<AdminScreen> {
                 destinations: const [
                   NavigationRailDestination(
                     icon: Icon(Icons.notifications_active),
-                    label: Text("Notice"),
-
+                    label: Text("Blog"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.mood),
-                    label: Text("CareerBank"),
+                    label: Text("Ebook"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.mood),
+                    label: Text("Career"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
-                    label: Text("Career Quizzes"),
+                    label: Text("Video"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.quiz),
+                    label: Text("Quiz"),
                   ),
                 ],
               ),
@@ -127,7 +139,6 @@ class _AdminScreenState extends State<AdminScreen> {
         ),
       );
     }
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       color: backgroundColor,
@@ -147,19 +158,23 @@ class _AdminScreenState extends State<AdminScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications_active),
-            label: 'Notice',
+            label: 'Blog',
           ),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
-            label: 'Resource',
+            label: 'Ebook',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
-            label: 'CareerBank',
+            label: 'Career',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book),
+            label: 'Video',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
-            label: 'Career Quizzes',
+            label: 'Quizzes',
           ),
 
         ],
@@ -303,8 +318,8 @@ class _AdminScreenState extends State<AdminScreen> {
                   title: const Text('Logout'),
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
-                    // await FirebaseAuth.instance.signOut();
+                    // await prefs.clear();
+                    await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())
                       await googleSignIn.signOut();

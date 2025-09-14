@@ -18,6 +18,8 @@ class _ContactUsPageState extends State<ContactUsPage> {
   String? name;
   String? email;
   bool _loadingProfile = true;
+  bool _sending = false;
+
 
   late TextEditingController nameController;
   late TextEditingController emailController;
@@ -50,7 +52,7 @@ class _ContactUsPageState extends State<ContactUsPage> {
         _loadingProfile = false;
       });
     } catch (e) {
-      print("Load profile error: $e");
+      debugPrint("Load profile error: $e");
       setState(() => _loadingProfile = false);
     }
   }
@@ -63,6 +65,46 @@ class _ContactUsPageState extends State<ContactUsPage> {
     }
   }
 
+  Future<void> _sendMessage() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final message = messageController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || message.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields")),
+      );
+      return;
+    }
+
+    setState(() => _sending = true);
+
+    try {
+      await FirebaseFirestore.instance.collection('contacts').add({
+        'email': email,
+        'message': message,
+        'userId': FirebaseAuth.instance.currentUser?.uid ?? 'anonymous',
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Message sent successfully!")),
+      );
+
+      // Clear message field after sending
+      messageController.clear();
+    } catch (e) {
+      debugPrint("Send message error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to send message.")),
+      );
+    } finally {
+      setState(() => _sending = false);
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     if (_loadingProfile) {
@@ -71,12 +113,12 @@ class _ContactUsPageState extends State<ContactUsPage> {
       );
     }
 
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text("Contact Us"),
         centerTitle: true,
-        backgroundColor: Colors.teal,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -96,9 +138,6 @@ class _ContactUsPageState extends State<ContactUsPage> {
                   options: MapOptions(
                     initialCenter: officeLocation,
                     initialZoom: 16,
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.all,
-                    ),
                   ),
                   children: [
                     TileLayer(
@@ -113,9 +152,9 @@ class _ContactUsPageState extends State<ContactUsPage> {
                           point: officeLocation,
                           width: 60,
                           height: 60,
-                          child: const Icon(
+                          child: Icon(
                             Icons.location_on,
-                            color: Colors.red,
+                            color: theme.colorScheme.error,
                             size: 40,
                           ),
                         ),
@@ -128,25 +167,18 @@ class _ContactUsPageState extends State<ContactUsPage> {
 
             const SizedBox(height: 12),
 
-            /// Nút đi tới Google Maps
+            /// Google Maps button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _openGoogleMaps,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: Colors.teal,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                 ),
-                icon: const Icon(Icons.map, color: Colors.white),
+                icon: const Icon(Icons.map),
                 label: const Text(
                   "View Google Maps",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -155,7 +187,6 @@ class _ContactUsPageState extends State<ContactUsPage> {
 
             /// Contact Info
             Card(
-              elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -182,7 +213,6 @@ class _ContactUsPageState extends State<ContactUsPage> {
 
             /// Feedback Form
             Card(
-              elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -190,21 +220,19 @@ class _ContactUsPageState extends State<ContactUsPage> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       "Send us a message",
-                      style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
 
                     // Name auto-fill
                     TextField(
                       controller: nameController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: "Your Name",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -212,11 +240,9 @@ class _ContactUsPageState extends State<ContactUsPage> {
                     // Email auto-fill
                     TextField(
                       controller: emailController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: "Email",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -225,12 +251,10 @@ class _ContactUsPageState extends State<ContactUsPage> {
                     TextField(
                       controller: messageController,
                       maxLines: 4,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: "Message",
                         alignLabelWithHint: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -238,26 +262,20 @@ class _ContactUsPageState extends State<ContactUsPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: Colors.teal,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        onPressed: _sending ? null : _sendMessage,
+                        icon: _sending
+                            ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
                           ),
-                        ),
-                        onPressed: () {
-                          // TODO: Save to Firestore
-                          print("📨 Name: ${nameController.text}");
-                          print("📨 Email: ${emailController.text}");
-                          print("📨 Msg: ${messageController.text}");
-                        },
-                        icon: const Icon(Icons.send, color: Colors.white),
-                        label: const Text(
-                          "Send",
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white),
+                        )
+                            : const Icon(Icons.send),
+                        label: Text(
+                          _sending ? "Sending..." : "Send",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),

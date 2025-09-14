@@ -10,15 +10,48 @@ class CareerGuidancePage extends StatefulWidget {
 }
 
 class _CareerGuidancePageState extends State<CareerGuidancePage> {
+  // Dữ liệu đã được cập nhật để bao gồm các công việc liên quan
   final List<Map<String, dynamic>> industries = const [
-    {"name": "Technology & Engineering", "icon": Icons.engineering},
-    {"name": "Economics & Management", "icon": Icons.business_center},
-    {"name": "Healthcare", "icon": Icons.health_and_safety},
-    {"name": "Education & Teaching", "icon": Icons.school},
-    {"name": "Agriculture, Forestry & Fishery", "icon": Icons.agriculture},
-    {"name": "Culture, Arts & Tourism", "icon": Icons.palette},
-    {"name": "Law, Security & Defense", "icon": Icons.security},
-    {"name": "General Labor & Services", "icon": Icons.handyman},
+    {
+      "name": "Technology & Engineering",
+      "icon": Icons.engineering,
+      "jobs": ["Software Developer", "Data Analyst"]
+    },
+    {
+      "name": "Economics & Management",
+      "icon": Icons.business_center,
+      "jobs": ["Financial Advisor", "Marketing Manager"]
+    },
+    {
+      "name": "Healthcare",
+      "icon": Icons.health_and_safety,
+      "jobs": ["Doctor", "Nurse"]
+    },
+    {
+      "name": "Education & Teaching",
+      "icon": Icons.school,
+      "jobs": ["Teacher", "Educational Administrator"]
+    },
+    {
+      "name": "Agriculture, Forestry & Fishery",
+      "icon": Icons.agriculture,
+      "jobs": ["Agriculturist", "Veterinarian"]
+    },
+    {
+      "name": "Culture, Arts & Tourism",
+      "icon": Icons.palette,
+      "jobs": ["Graphic Designer", "Tour Guide"]
+    },
+    {
+      "name": "Law, Security & Defense",
+      "icon": Icons.security,
+      "jobs": ["Lawyer", "Police Officer"]
+    },
+    {
+      "name": "General Labor & Services",
+      "icon": Icons.handyman,
+      "jobs": ["Electrician", "Chef"]
+    },
   ];
 
   late YoutubePlayerController _youtubeController;
@@ -27,7 +60,8 @@ class _CareerGuidancePageState extends State<CareerGuidancePage> {
   void initState() {
     super.initState();
     _youtubeController = YoutubePlayerController(
-      initialVideoId: YoutubePlayer.convertUrlToId('https://www.youtube.com/watch?v=y0gIQs40KOo')!,
+      initialVideoId: YoutubePlayer.convertUrlToId(
+          'https://www.youtube.com/watch?v=kR2tS1q-T2M')!,
       flags: const YoutubePlayerFlags(
         autoPlay: false,
         mute: false,
@@ -65,13 +99,25 @@ class _CareerGuidancePageState extends State<CareerGuidancePage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          ...industries.map((industry) => Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            child: ListTile(
-              leading: Icon(industry['icon'], color: Colors.blue),
-              title: Text(industry['name']),
-            ),
-          )),
+          ...industries.map((industry) {
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              child: ExpansionTile(
+                leading: Icon(industry['icon'] as IconData, color: Colors.blue),
+                title: Text(industry['name'] as String),
+                children: (industry['jobs'] as List<String>)
+                    .map((job) => ListTile(
+                  title: Text(job),
+                  onTap: () {
+                    // TODO: Thêm hành động khi người dùng click vào một nghề cụ thể
+                    // Ví dụ: hiển thị chi tiết về nghề đó, hoặc điều hướng đến trang khác.
+                    print('Bạn đã chọn nghề: $job');
+                  },
+                ))
+                    .toList(),
+              ),
+            );
+          }).toList(),
           const Divider(),
 
           // 2. CV Writing Tips
