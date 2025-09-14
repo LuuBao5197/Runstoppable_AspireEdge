@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:trackmentalhealth/main.dart';
+import 'package:trackmentalhealth/pages/SplashScreen.dart';
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
 import 'package:http/http.dart' as http;
@@ -45,6 +46,8 @@ class _LoginPageState extends State<LoginPage> {
         _emailController.text = email;
         _useSavedEmail = true;
       });
+    } else {
+      print("Can't get email");
     }
   }
 
@@ -149,9 +152,10 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('photoUrl', user.photoURL ?? '');
         await prefs.setString('last_email', user.email ?? ""); // 👈 lưu email
 
+        _loadSavedEmail();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
       }
     } on FirebaseAuthException catch (e) {

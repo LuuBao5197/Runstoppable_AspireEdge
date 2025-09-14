@@ -299,7 +299,7 @@ class _GraduateScreenState extends State<GraduateScreen> {
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.clear();
-                    // await FirebaseAuth.instance.signOut();
+                    await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())
                       await googleSignIn.signOut();

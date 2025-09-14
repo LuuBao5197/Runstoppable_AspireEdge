@@ -276,7 +276,7 @@ class _MainScreenState extends State<MainScreen> {
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                 ),
-                child: const Text('Track Mental Health'),
+                child: const Text('Aspire Edge'),
               ),
               centerTitle: true,
               iconTheme: IconThemeData(
@@ -384,7 +384,7 @@ class _MainScreenState extends State<MainScreen> {
                   title: const Text('Logout'),
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
+                    // await prefs.clear();
                     // await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())
