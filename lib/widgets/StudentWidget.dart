@@ -9,6 +9,7 @@ import 'package:trackmentalhealth/pages/ContactUsPage.dart';
 import 'package:trackmentalhealth/widgets/CategorySelectWidget.dart';
 
 import '../core/constants/theme_provider.dart';
+import '../pages/CareerBank/career_guidance_page.dart';
 import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Resource/resource_main.dart';
@@ -36,7 +37,9 @@ class _StudentScreenState extends State<StudentScreen> {
     const NotificationScreen(),
     const ResourceMain(),
     const ContactUsPage(),
+    const CareerGuidancePage(),
     const CategorySelectionScreen(),
+
   ];
 
   @override
@@ -164,6 +167,10 @@ class _StudentScreenState extends State<StudentScreen> {
                     label: Text("Contact"),
                   ),
                   const NavigationRailDestination(
+                    icon: Icon(Icons.contact_page),
+                    label: Text("CareerGuidancePage"),
+                  ),
+                  const NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("View Mode"),
                   ),
@@ -201,6 +208,10 @@ class _StudentScreenState extends State<StudentScreen> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.contact_page),
             label: 'Contact',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.contact_page),
+            label: 'CareerGuidancePage',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),

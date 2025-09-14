@@ -10,6 +10,7 @@ import 'package:trackmentalhealth/pages/Resource/Admin/Videos/Video_admin_screen
 
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
+import '../pages/CareerBankAdminPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
 import '../pages/Quizzes/QuestionListScreen.dart';
@@ -33,8 +34,10 @@ class _AdminScreenState extends State<AdminScreen> {
   final List<Widget> _screens = [
     const AdminBlogScreen(),
     const AdminEbookScreen(),
+    const CareerBankAdminPage(),
     const AdminVideosScreen(),
-    const QuestionListScreen()
+    const QuestionListScreen(),
+
   ];
 
   @override
@@ -118,6 +121,10 @@ class _AdminScreenState extends State<AdminScreen> {
                     label: Text("Ebook"),
                   ),
                   NavigationRailDestination(
+                    icon: Icon(Icons.mood),
+                    label: Text("Career"),
+                  ),
+                  NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("Video"),
                   ),
@@ -156,6 +163,10 @@ class _AdminScreenState extends State<AdminScreen> {
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
             label: 'Ebook',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book),
+            label: 'Career',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
