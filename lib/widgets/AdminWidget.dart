@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/pages/Admin/AdminContactPage.dart';
-import 'package:trackmentalhealth/pages/Admin/AdminFeedbackPage.dart';
-import 'package:trackmentalhealth/services/SendNoticePage.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Blogs/Blog_admin_screen.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Ebooks/Ebook_admin_screen.dart';
+import 'package:trackmentalhealth/pages/Resource/Admin/Videos/Video_admin_screen.dart';
 
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
@@ -31,10 +31,9 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _loadingProfile = true;
   bool hasNewNotification = false;
   final List<Widget> _screens = [
-    const AdminFeedbackPage(),
-    const AdminContactPage(),
-    const ResourceMain(),
-    const CareerBankPage(),
+    const AdminBlogScreen(),
+    const AdminEbookScreen(),
+    const AdminVideosScreen(),
     const QuestionListScreen()
   ];
 
@@ -111,20 +110,20 @@ class _AdminScreenState extends State<AdminScreen> {
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
                   NavigationRailDestination(
-                    icon: Icon(Icons.feed_outlined),
-                    label: Text("Feedback"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.contact_page),
-                    label: Text("Contact"),
+                    icon: Icon(Icons.notifications_active),
+                    label: Text("Blog"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.mood),
-                    label: Text("CareerBank"),
+                    label: Text("Ebook"),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
-                    label: Text("Career Quizzes"),
+                    label: Text("Video"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.quiz),
+                    label: Text("Quiz"),
                   ),
                 ],
               ),
@@ -133,7 +132,6 @@ class _AdminScreenState extends State<AdminScreen> {
         ),
       );
     }
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       color: backgroundColor,
@@ -152,24 +150,20 @@ class _AdminScreenState extends State<AdminScreen> {
         elevation: 10,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.feed_outlined),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.contact_page),
-            label: 'Contact',
+            icon: Icon(Icons.notifications_active),
+            label: 'Blog',
           ),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
-            label: 'Resource',
+            label: 'Ebook',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
-            label: 'CareerBank',
+            label: 'Video',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
-            label: 'Career Quizzes',
+            label: 'Quizzes',
           ),
 
         ],
@@ -205,7 +199,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                 ),
-                child: const Text('Aspire Edge'),
+                child: const Text('Track Mental Health'),
               ),
               centerTitle: true,
               iconTheme: IconThemeData(
@@ -292,14 +286,29 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
                 ListTile(
                   leading: Icon(
+                    Icons.settings,
+                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
+                  ),
+                  title: const Text('Settings'),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Settings Page chưa được tạo.'),
+                      ),
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
                     Icons.logout,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
                   title: const Text('Logout'),
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
-                    // await FirebaseAuth.instance.signOut();
+                    // await prefs.clear();
+                    await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())
                       await googleSignIn.signOut();

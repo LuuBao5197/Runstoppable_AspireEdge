@@ -63,6 +63,7 @@ class _StudentScreenState extends State<StudentScreen> {
 
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -337,7 +338,8 @@ class _StudentScreenState extends State<StudentScreen> {
                   title: const Text('Logout'),
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
+                    // await prefs.clear();
+                    await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
                     if (!mounted) return;

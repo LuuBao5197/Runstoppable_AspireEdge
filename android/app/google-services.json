@@ -30,11 +30,35 @@
           }
         },
         {
+          "client_id": "1035803144115-oil78nb4i8qr0o52p7t0atukg17pbk77.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aspiration.aspireedge",
+            "certificate_hash": "e2baaedd4fec186a079d43191759c1f89c96f6cf"
+          }
+        },
+        {
+          "client_id": "1035803144115-po9d9i0jn2g8djlmdhlcor8episcjd0h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aspiration.aspireedge",
+            "certificate_hash": "0e76d46fc4e8d750044993fac8a7dcef0d0847e7"
+          }
+        },
+        {
           "client_id": "1035803144115-pp64ecmuj6vrlub767o0qp17hn1cu0mv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.aspiration.aspireedge",
             "certificate_hash": "168800037030276134273558f4c890889ec56996"
+          }
+        },
+        {
+          "client_id": "1035803144115-vgviivbb4va7ma8ngrl059oo918kv2p5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aspiration.aspireedge",
+            "certificate_hash": "8ad8cde97efe4df7731378ec4577fba93ec777c7"
           }
         },
         {
