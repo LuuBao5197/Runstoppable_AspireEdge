@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/ContactUsPage.dart';
 import 'package:trackmentalhealth/widgets/CategorySelectWidget.dart';
 
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
+import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
 import '../pages/Quizzes/QuestionListScreen.dart';
@@ -33,7 +35,8 @@ class _GraduateScreenState extends State<GraduateScreen> {
     const ResourceMain(),
     const CareerBankPage(),
     const CareerDashboardScreen(),
-    const CategorySelectionScreen()
+    const ContactUsPage(),
+    const CategorySelectionScreen(),
   ];
 
   @override
@@ -123,6 +126,11 @@ class _GraduateScreenState extends State<GraduateScreen> {
                   ),
 
                   NavigationRailDestination(
+                    icon: Icon(Icons.contact_page),
+                    label: Text("Contact"),
+                  ),
+
+                  NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("View Mode"),
                   ),
@@ -165,6 +173,10 @@ class _GraduateScreenState extends State<GraduateScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
             label: 'Career Quizzes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contact_page),
+            label: 'Contact',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
@@ -277,17 +289,12 @@ class _GraduateScreenState extends State<GraduateScreen> {
                 ),
                 ListTile(
                   leading: Icon(
-                    Icons.person,
+                    Icons.feedback_outlined,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
-                  title: const Text('Profile'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                    if (result == true) _loadProfile();
+                  title: const Text('Feedback'),
+                  onTap: () {
+                    Navigator.push(context,MaterialPageRoute(builder: (_) => const FeedbackPage()));
                   },
                 ),
                 ListTile(

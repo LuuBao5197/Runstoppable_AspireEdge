@@ -39,7 +39,6 @@ class NotificationService {
     });
 
   }
-
   void dispose() {
     _controller.close();
   }
