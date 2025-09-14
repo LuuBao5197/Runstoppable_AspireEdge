@@ -13,6 +13,7 @@ import 'package:trackmentalhealth/pages/Quizzes/QuestionListScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreenLikert.dart';
 import 'package:trackmentalhealth/pages/Quizzes/SurveyScreen.dart';
+import 'package:trackmentalhealth/pages/Resource/User/WishlistScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
@@ -357,6 +358,21 @@ class _MainScreenState extends State<MainScreen> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
+                    if (result == true) _loadProfile();
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.person,
+                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
+                  ),
+                  title: const Text('My Wishlist'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WishlistScreen()),
                     );
                     if (result == true) _loadProfile();
                   },

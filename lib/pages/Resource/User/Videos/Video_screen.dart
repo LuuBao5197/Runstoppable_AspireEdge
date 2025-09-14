@@ -116,130 +116,104 @@ class _VideoScreenState extends State<VideoScreen> {
               final data = doc.data() as Map<String, dynamic>;
               final videoId = doc.id;
 
-              return StreamBuilder<DocumentSnapshot>(
-                stream: firestore
-                    .collection("videos")
-                    .doc(videoId)
-                    .collection("favorites")
-                    .doc(userId)
-                    .snapshots(),
-                builder: (context, favSnap) {
-                  final isFav = favSnap.data?.exists ?? false;
+              final favMap = Map<String, dynamic>.from(data["favorites"] ?? {});
+              final markMap = Map<String, dynamic>.from(data["bookmarks"] ?? {});
 
-                  return StreamBuilder<DocumentSnapshot>(
-                    stream: firestore
-                        .collection("videos")
-                        .doc(videoId)
-                        .collection("bookmarks")
-                        .doc(userId)
-                        .snapshots(),
-                    builder: (context, markSnap) {
-                      final isMark = markSnap.data?.exists ?? false;
+              final isFav = favMap[userId] == true;
+              final isMark = markMap[userId] == true;
 
-                      return InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => VideoDetailScreen(videoId: videoId),
-                            ),
-                          );
-                        },
-                        child: Card(
-                          margin: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (data["thumbnail"] != null)
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                                  child: Image.network(
-                                    data["thumbnail"],
-                                    height: 180,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            data["title"] ?? "",
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            data["description"] ?? "",
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        isFav ? Icons.favorite : Icons.favorite_border,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () async {
-                                        final favRef = firestore
-                                            .collection("videos")
-                                            .doc(videoId)
-                                            .collection("favorites")
-                                            .doc(userId);
-                                        if (isFav) {
-                                          await favRef.delete();
-                                        } else {
-                                          await favRef.set({"createdAt": FieldValue.serverTimestamp()});
-                                        }
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        isMark ? Icons.bookmark : Icons.bookmark_border,
-                                      ),
-                                      onPressed: () async {
-                                        final markRef = firestore
-                                            .collection("videos")
-                                            .doc(videoId)
-                                            .collection("bookmarks")
-                                            .doc(userId);
-                                        if (isMark) {
-                                          await markRef.delete();
-                                        } else {
-                                          await markRef.set({"createdAt": FieldValue.serverTimestamp()});
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VideoDetailScreen(videoId: videoId),
+                    ),
                   );
                 },
+                child: Card(
+                  margin: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (data["thumbnail"] != null)
+                        ClipRRect(
+                          borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(8)),
+                          child: Image.network(
+                            data["thumbnail"],
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    data["title"] ?? "",
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold, fontSize: 16),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    data["description"] ?? "",
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    isFav ? Icons.favorite : Icons.favorite_border,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    final videoRef =
+                                    firestore.collection("videos").doc(videoId);
+                                    if (isFav) {
+                                      videoRef.update({
+                                        "favorites.$userId": FieldValue.delete(),
+                                      });
+                                    } else {
+                                      videoRef.update({
+                                        "favorites.$userId": true,
+                                      });
+                                    }
+                                  },
+                                ),
+                                Text(favMap.length.toString()),
+                              ],
+                            ),
+                            IconButton(
+                              icon: Icon(isMark ? Icons.bookmark : Icons.bookmark_border),
+                              onPressed: () {
+                                firestore.collection("videos").doc(videoId).update({
+                                  "bookmarks.$userId": !isMark,
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               );
             }).toList(),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddVideoScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }
