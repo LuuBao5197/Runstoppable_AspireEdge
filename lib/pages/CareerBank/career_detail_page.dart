@@ -41,15 +41,15 @@ class CareerDetailPage extends StatelessWidget {
             Text("💰 Salary: ${data["salaryRange"] ?? ""}"),
             const SizedBox(height: 12),
             const Text("🎓 Education Path:", style: TextStyle(fontWeight: FontWeight.bold)),
-
-            if (data["educationPath"] != null) ...[
-              Text("   - Degree: ${data["educationPath"]["degree"] ?? ""}"),
-              Text("   - Courses: ${(data["educationPath"]["courses"] as List<dynamic>?)?.join(', ') ?? ""}"),
-              Text("   - Certificates: ${(data["educationPath"]["certificates"] as List<dynamic>?)?.join(', ') ?? ""}"),
-              Text("   - Duration: ${data["educationPath"]["duration"] ?? ""}"),
-              Text("   - Level: ${data["educationPath"]["careerLevel"] ?? ""}"),
-              Text("   - Cost: ${data["educationPath"]["estimatedCost"] ?? ""}"),
+            if (data["education_path"] != null) ...[
+              Text("   - Degree: ${data["education_path"]["degree"] ?? ""}"),
+              Text("   - Courses: ${(data["education_path"]["courses"] as List<dynamic>?)?.join(', ') ?? ""}"),
+              Text("   - Certificates: ${(data["education_path"]["certificates"] as List<dynamic>?)?.join(', ') ?? ""}"),
+              Text("   - Duration: ${data["education_path"]["duration"] ?? ""}"),
+              Text("   - Level: ${data["education_path"]["career_level"] ?? ""}"),
+              Text("   - Cost: ${data["education_path"]["estimated_cost"] ?? ""}"),
             ]
+
 
           ],
         ),
