@@ -14,6 +14,7 @@ import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Resource/resource_main.dart';
 import '../pages/login/LoginPage.dart';
+import '../pages/profile/ProfileScreen.dart';
 import '../services/NotificationService.dart';
 
 class StudentScreen extends StatefulWidget {
@@ -193,7 +194,7 @@ class _StudentScreenState extends State<StudentScreen> {
         currentIndex: _selectedIndex,
         onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
         selectedLabelStyle:
@@ -307,8 +308,8 @@ class _StudentScreenState extends State<StudentScreen> {
                         children: [
                           CircleAvatar(
                             radius: 30,
-                            backgroundImage: (avatarUrl != null &&
-                                avatarUrl.isNotEmpty)
+                            backgroundImage:
+                            (avatarUrl != null && avatarUrl.isNotEmpty)
                                 ? NetworkImage(avatarUrl)
                                 : null,
                             child: (avatarUrl == null || avatarUrl.isEmpty)
@@ -334,6 +335,21 @@ class _StudentScreenState extends State<StudentScreen> {
                 ),
                 ListTile(
                   leading: Icon(
+                    Icons.person,
+                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
+                  ),
+                  title: const Text('Profile'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
+                    if (result == true) _loadProfile();
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
                     Icons.feedback_outlined,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
@@ -354,9 +370,10 @@ class _StudentScreenState extends State<StudentScreen> {
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
                     // await prefs.clear();
-                    await FirebaseAuth.instance.signOut();
+                    // await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
-                    if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
+                    if (await googleSignIn.isSignedIn())
+                      await googleSignIn.signOut();
                     if (!mounted) return;
                     Navigator.pushReplacement(
                       context,

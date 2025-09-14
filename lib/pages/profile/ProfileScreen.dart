@@ -7,6 +7,8 @@ import 'package:trackmentalhealth/main.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 
+import '../SplashScreen.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -229,7 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.of(context).pushReplacement(
                     PageRouteBuilder(
                       pageBuilder: (context, animation, secondaryAnimation) =>
-                      const MainScreen(),
+                      const SplashScreen(),
                       transitionsBuilder:
                           (context, animation, secondaryAnimation, child) {
                         const begin = Offset(0.0, 0.2);

@@ -151,7 +151,7 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
         currentIndex: _selectedIndex,
         onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
         selectedLabelStyle: const TextStyle(
@@ -265,7 +265,8 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
                         );
                       }
 
-                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      final data =
+                      snapshot.data!.data() as Map<String, dynamic>;
                       final avatarUrl = data['avatarUrl'] as String?;
                       final name = data['name'] ?? "User";
 
@@ -274,17 +275,25 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
                         children: [
                           CircleAvatar(
                             radius: 30,
-                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                            backgroundImage:
+                            (avatarUrl != null && avatarUrl.isNotEmpty)
                                 ? NetworkImage(avatarUrl)
                                 : null,
                             child: (avatarUrl == null || avatarUrl.isEmpty)
-                                ? const Icon(Icons.person, size: 40, color: Colors.white)
+                                ? const Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Colors.white,
+                            )
                                 : null,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             "Hello, $name",
-                            style: const TextStyle(color: Colors.white, fontSize: 18),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
                           ),
                         ],
                       );
@@ -293,12 +302,30 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
                 ),
                 ListTile(
                   leading: Icon(
+                    Icons.person,
+                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
+                  ),
+                  title: const Text('Profile'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
+                    if (result == true) _loadProfile();
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
                     Icons.feedback_outlined,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
                   title: const Text('Feedback'),
                   onTap: () {
-                    Navigator.push(context,MaterialPageRoute(builder: (_) => const FeedbackPage()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FeedbackPage()),
+                    );
                   },
                 ),
                 ListTile(
@@ -310,7 +337,7 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
                     // await prefs.clear();
-                    await FirebaseAuth.instance.signOut();
+                    // await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())
                       await googleSignIn.signOut();
