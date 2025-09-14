@@ -114,12 +114,10 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const NotificationScreen(),
     const ResourceMain(),
-    const CareerGuidancePage(),
     const CareerBankPage(),
+     const CareerDashboardScreen(),
+    const CareerGuidancePage(),
     const ContactUsPage(),
-    const CareerDashboardScreen()
-
-    // const QuestionListScreen() danh cho giao dien admin
   ];
 
   late final StreamSubscription<List<Map<String, dynamic>>> _notiSub;
@@ -407,21 +405,6 @@ class _MainScreenState extends State<MainScreen> {
                       MaterialPageRoute(builder: (_) => const ProfileScreen()),
                     );
                     if (result == true) _loadProfile();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.settings,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Settings'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings Page chưa được tạo.'),
-                      ),
-                    );
-                    Navigator.pop(context);
                   },
                 ),
                 ListTile(

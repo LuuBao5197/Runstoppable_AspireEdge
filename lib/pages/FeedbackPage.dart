@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_rating_bar/flutter_rating_bar.dart'; // ✅ import
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
 import '../DTO/FeedbackDTO.dart';
 
@@ -42,7 +42,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You must login to send feedback")),
+          const SnackBar(content: Text("⚠️ You must login to send feedback")),
         );
         return;
       }
@@ -54,7 +54,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
         phone: _phoneController.text,
         message: _messageController.text,
         createdAt: DateTime.now(),
-        rating: _rating.toInt(), // ✅ lưu rating
+        rating: _rating.toInt(),
       );
 
       try {
@@ -63,13 +63,13 @@ class _FeedbackPageState extends State<FeedbackPage> {
             .add(feedback.toJson());
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Thank you for your feedback!")),
+          const SnackBar(content: Text("✅ Thank you for your feedback!")),
         );
 
-        _messageController.clear(); // keep user info, clear only message
+        _messageController.clear(); // chỉ clear message
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to send feedback: $e")),
+          SnackBar(content: Text("❌ Failed to send feedback: $e")),
         );
       }
     }
@@ -77,25 +77,29 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title:
-        const Text("Feedback", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Feedback",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
-        backgroundColor: Colors.teal,
+        backgroundColor: isDark ? Colors.grey[900] : Colors.teal,
         elevation: 2,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Center(
+      body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Card(
+            color: Theme.of(context).cardColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(24),
             ),
             elevation: 6,
             child: Padding(
@@ -103,23 +107,27 @@ class _FeedbackPageState extends State<FeedbackPage> {
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      "We always listen to improve our service. Please share your feedback with us.",
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                    Text(
+                      "We always listen to improve our service.\nPlease share your feedback with us",
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 16,
+                        color: isDark ? Colors.grey[300] : Colors.black54,
+                      ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
                     // Full name
                     TextFormField(
                       controller: _nameController,
                       readOnly: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Full name",
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.person),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -128,10 +136,12 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     TextFormField(
                       controller: _emailController,
                       readOnly: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Email",
-                        prefixIcon: Icon(Icons.email),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.email),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -140,10 +150,12 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Phone number",
-                        prefixIcon: Icon(Icons.phone),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.phone),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (value) => value == null || value.length < 9
                           ? "Invalid phone number"
@@ -155,71 +167,77 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     TextFormField(
                       controller: _messageController,
                       maxLines: 4,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Your feedback",
                         alignLabelWithHint: true,
-                        prefixIcon: Icon(Icons.feedback),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.feedback),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (value) => value == null || value.isEmpty
                           ? "Please enter your feedback"
                           : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
                     // Rating bar
-// Rating bar
-                    const SizedBox(height: 16),
-                    Center(
-                      child: Column(
-                        children: [
-                          const Text(
-                            "Rate our service:",
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600),
+                    Column(
+                      children: [
+                        Text(
+                          "Rate our service:",
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.teal,
                           ),
-                          const SizedBox(height: 8),
-                          RatingBar.builder(
-                            initialRating: _rating,
-                            minRating: 1,
-                            direction: Axis.horizontal,
-                            allowHalfRating: false,
-                            itemCount: 5,
-                            itemSize: 40, // ⭐ tăng size
-                            itemPadding: const EdgeInsets.symmetric(horizontal: 4.0), // spacing
-                            itemBuilder: (context, _) => const Icon(
-                              Icons.star,
-                              color: Colors.amber,
-                            ),
-                            onRatingUpdate: (rating) {
-                              setState(() {
-                                _rating = rating;
-                              });
-                            },
+                        ),
+                        const SizedBox(height: 8),
+                        RatingBar.builder(
+                          initialRating: _rating,
+                          minRating: 1,
+                          direction: Axis.horizontal,
+                          allowHalfRating: false,
+                          itemCount: 5,
+                          itemSize: 40,
+                          itemPadding:
+                          const EdgeInsets.symmetric(horizontal: 4.0),
+                          itemBuilder: (context, _) => const Icon(
+                            Icons.star,
+                            color: Colors.amber,
                           ),
-                        ],
-                      ),
+                          onRatingUpdate: (rating) {
+                            setState(() {
+                              _rating = rating;
+                            });
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
 
                     // Submit button
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
+                        icon: Icon(
+                          Icons.send_rounded,
+                          color: Theme.of(context).colorScheme.onPrimary, // tự đổi light/dark
+                        ),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          backgroundColor: Colors.teal,
+                          backgroundColor: Theme.of(context).colorScheme.primary, // tự đổi màu chính
                         ),
                         onPressed: _submitFeedback,
-                        child: const Text(
+                        label: Text(
                           "Send Feedback",
                           style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onPrimary, // tự đổi light/dark
+                          ),
                         ),
                       ),
                     ),
