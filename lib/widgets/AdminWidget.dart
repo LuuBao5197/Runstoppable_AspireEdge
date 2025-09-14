@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/Admin/AdminContactPage.dart';
+import 'package:trackmentalhealth/pages/Admin/AdminFeedbackPage.dart';
 import 'package:trackmentalhealth/pages/Resource/Admin/Blogs/Blog_admin_screen.dart';
 import 'package:trackmentalhealth/pages/Resource/Admin/Ebooks/Ebook_admin_screen.dart';
 import 'package:trackmentalhealth/pages/Resource/Admin/Videos/Video_admin_screen.dart';
@@ -37,6 +39,8 @@ class _AdminScreenState extends State<AdminScreen> {
     const CareerBankAdminPage(),
     const AdminVideosScreen(),
     const QuestionListScreen(),
+    const AdminFeedbackPage(),
+    const AdminContactPage(),
 
   ];
 
@@ -117,11 +121,11 @@ class _AdminScreenState extends State<AdminScreen> {
                     label: Text("Blog"),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.mood),
+                    icon: Icon(Icons.book),
                     label: Text("Ebook"),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.mood),
+                    icon: Icon(Icons.person),
                     label: Text("Career"),
                   ),
                   NavigationRailDestination(
@@ -131,6 +135,14 @@ class _AdminScreenState extends State<AdminScreen> {
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("Quiz"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.feedback),
+                    label: Text("Feedback"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.contact_page),
+                    label: Text("Contact"),
                   ),
                 ],
               ),
@@ -175,6 +187,14 @@ class _AdminScreenState extends State<AdminScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
             label: 'Quizzes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.feedback),
+            label: 'Feedback',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contact_page),
+            label: 'Contact',
           ),
 
         ],
