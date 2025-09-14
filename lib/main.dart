@@ -14,6 +14,7 @@ import 'package:trackmentalhealth/pages/Quizzes/QuestionListScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/Quizzes/QuizScreenLikert.dart';
 import 'package:trackmentalhealth/pages/Quizzes/SurveyScreen.dart';
+import 'package:trackmentalhealth/pages/Resource/User/WishlistScreen.dart';
 import 'package:trackmentalhealth/pages/Resource/resource_main.dart';
 import 'package:trackmentalhealth/pages/ProfilePage.dart';
 import 'package:trackmentalhealth/pages/SearchPage.dart';
