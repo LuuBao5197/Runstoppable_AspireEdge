@@ -23,7 +23,7 @@ class SendNotificationService {
       await _firestore.collection('notifications').add({
         ...notice.toMap(),
         'createdAt': FieldValue.serverTimestamp(),
-        'userId': userId, // chỉ định người nhận
+        'userId': userId,
       });
 
       print("✅ Notification sent to user $userId!");

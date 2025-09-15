@@ -6,12 +6,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/ContactUsPage.dart';
+import 'package:trackmentalhealth/pages/Quizzes/QuizScreen.dart';
 import 'package:trackmentalhealth/widgets/CategorySelectWidget.dart';
 
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/career_guidance_page.dart';
 import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
+import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
 import '../pages/Resource/User/WishlistScreen.dart';
 import '../pages/Resource/resource_main.dart';
 import '../pages/login/LoginPage.dart';
@@ -40,8 +42,7 @@ class _StudentScreenState extends State<StudentScreen> {
     const ResourceMain(),
     const ContactUsPage(),
     const CareerGuidancePage(),
-    const CategorySelectionScreen(),
-
+    const CareerDashboardScreen(),
   ];
 
   @override
@@ -221,7 +222,7 @@ class _StudentScreenState extends State<StudentScreen> {
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
-            label: 'View Mode',
+            label: "Quiz",
           ),
         ],
       ),
@@ -364,10 +365,10 @@ class _StudentScreenState extends State<StudentScreen> {
                 ),
                 ListTile(
                   leading: Icon(
-                    Icons.favorite,
+                    Icons.bookmark_border_outlined,
                     color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
                   ),
-                  title: const Text('Wishlist'),
+                  title: const Text('Book mark'),
                   onTap: () {
                     Navigator.push(
                       context,

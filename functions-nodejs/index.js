@@ -4,10 +4,17 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors")({ origin: true });
 const cloudinary = require("cloudinary").v2;
+const { onCall, onRequest } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2");
+
+// Thêm require cho Gemini
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Khởi tạo Firebase Admin SDK (chỉ một lần)
 admin.initializeApp();
 const db = admin.firestore();
+// Khởi tạo Gemini AI với API Key từ file .env
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Cấu hình Cloudinary (chỉ một lần)
 cloudinary.config({
@@ -235,4 +242,31 @@ exports.updateQuestion = functions.https.onCall(async (data, context) => {
     console.error("Error updating question:", error.message);
     throw new functions.https.HttpsError("internal", "Could not update question.");
   }
+});
+exports.generateCareerRoadmap = onCall({ timeoutSeconds: 30 }, async (request) => {
+    if (!request.auth) {
+      throw new onCall.HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const targetCareer = request.data.targetCareer;
+    const userScores = request.data.userScores;
+
+    if (!targetCareer || !userScores) {
+      throw new onCall.HttpsError("invalid-argument", "Missing required data.");
+    }
+
+    const prompt = `...`; // Prompt của bạn giữ nguyên
+
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const roadmapText = response.text();
+
+      return { roadmap: roadmapText };
+
+    } catch (error) {
+      console.error("Error calling Gemini API:", error.message);
+      throw new onCall.HttpsError("internal", "Failed to generate roadmap.");
+    }
 });

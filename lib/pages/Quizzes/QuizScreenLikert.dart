@@ -47,8 +47,7 @@ class _QuizScreenLikerState extends State<QuizScreenLiker> {
     final List<Question> finalQuizList = [];
     groupedQuestions.forEach((group, questionsInGroup) {
       questionsInGroup.shuffle();
-      // Đảm bảo không lấy quá số câu hỏi hiện có trong nhóm
-      final questionsToTake = questionsInGroup.length < 4 ? questionsInGroup.length : 4;
+      final questionsToTake = questionsInGroup.length < 3 ? questionsInGroup.length : 3;
       finalQuizList.addAll(questionsInGroup.take(questionsToTake));
     });
 
@@ -61,39 +60,31 @@ class _QuizScreenLikerState extends State<QuizScreenLiker> {
     _pageController.dispose();
     super.dispose();
   }
-
-  // THAY THẾ HÀM CŨ BẰNG HÀM NÀY
   void _onAnswerSelected(Question question, ScaleOption option, int currentIndex, int totalQuestions) {
     setState(() {
       scores[question.mapsToGroup] = (scores[question.mapsToGroup] ?? 0) + option.score;
     });
 
-    // LOGIC ĐÚNG: So sánh số nguyên đơn giản
     if (currentIndex < totalQuestions) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeIn,
       );
     } else {
-      // Nếu là câu hỏi cuối cùng, gọi kết quả
       _showResults();
     }
   }
-  // =================================================================
-  // HÀM _showResults() ĐÃ ĐƯỢC NÂNG CẤP HOÀN CHỈNH
-  // =================================================================
+
   void _showResults() {
-    // 1. Chuyển Map điểm số thành một List để sắp xếp
+
     final sortedScores = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // 2. Lấy ra 2 nhóm có điểm số cao nhất
     final topTwoGroups = sortedScores.take(2).toList();
     final resultText =
-        "1. ${topTwoGroups[0].key}: ${topTwoGroups[0].value} điểm\n"
-        "2. ${topTwoGroups[1].key}: ${topTwoGroups[1].value} điểm";
+        "1. ${topTwoGroups[0].key}: ${topTwoGroups[0].value} score\n"
+        "2. ${topTwoGroups[1].key}: ${topTwoGroups[1].value} score";
 
-    // 3. Hiển thị kết quả trong một Dialog
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
       builder: (_) => QuizLikertResultScreen(scores: scores),
@@ -105,7 +96,7 @@ class _QuizScreenLikerState extends State<QuizScreenLiker> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Bài Trắc nghiệm Sở thích"),
+        title: const Text("Likert Interest Quiz"),
       ),
       body: FutureBuilder<List<Question>>(
         future: _quizQuestionsFuture,
@@ -117,7 +108,7 @@ class _QuizScreenLikerState extends State<QuizScreenLiker> {
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
               child: Text(
-                "Không có dữ liệu quiz.\nVui lòng đảm bảo bạn đã kết nối mạng trong lần đầu sử dụng.",
+                "No quiz data.\n",
                 textAlign: TextAlign.center,
               ),
             );
@@ -143,7 +134,6 @@ class _QuizScreenLikerState extends State<QuizScreenLiker> {
   }
 
   Widget buildQuestionPage(Question question, int currentIndex, int totalQuestions) {
-    // Code phần này không thay đổi
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -151,7 +141,7 @@ class _QuizScreenLikerState extends State<QuizScreenLiker> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Câu $currentIndex / $totalQuestions',
+            'Question $currentIndex / $totalQuestions',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge,
           ),

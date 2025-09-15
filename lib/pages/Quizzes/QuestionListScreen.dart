@@ -10,17 +10,14 @@ class QuestionListScreen extends StatefulWidget {
 }
 
 class _QuestionListScreenState extends State<QuestionListScreen> {
-  // State chính
   bool _isLoading = true;
   List<QueryDocumentSnapshot> _allQuestions = []; // Lưu trữ toàn bộ câu hỏi
   List<QueryDocumentSnapshot> _filteredQuestions = []; // Lưu trữ danh sách đã được lọc/tìm kiếm
 
-  // State cho các công cụ
   final _searchController = TextEditingController();
   String? _selectedCategory;
   final List<String> _categories = ['realistic', 'investigative', 'artistic', 'social', 'enterprising', 'conventional'];
 
-  // State cho phân trang
   int _currentPage = 0;
   final int _itemsPerPage = 10; // Hiển thị 10 câu hỏi mỗi trang
 
@@ -28,7 +25,6 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
   void initState() {
     super.initState();
     _fetchAndPrepareData();
-    // Lắng nghe thay đổi trong ô tìm kiếm
     _searchController.addListener(() {
       _applyFiltersAndSearch();
     });
@@ -40,7 +36,6 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
     super.dispose();
   }
 
-  // Hàm tải toàn bộ dữ liệu từ Firestore MỘT LẦN DUY NHẤT
   Future<void> _fetchAndPrepareData() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('questions').get();
@@ -51,16 +46,13 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
       });
     } catch (e) {
       setState(() { _isLoading = false; });
-      // Xử lý lỗi
       print("Error fetching data: $e");
     }
   }
 
-  // Hàm trung tâm để xử lý Lọc và Tìm kiếm
   void _applyFiltersAndSearch() {
     List<QueryDocumentSnapshot> tempQuestions = List.from(_allQuestions);
 
-    // 1. Áp dụng bộ lọc Category
     if (_selectedCategory != null) {
       tempQuestions = tempQuestions.where((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -74,7 +66,6 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
       }).toList();
     }
 
-    // 2. Áp dụng bộ lọc Tìm kiếm
     final searchText = _searchController.text.toLowerCase();
     if (searchText.isNotEmpty) {
       tempQuestions = tempQuestions.where((doc) {
@@ -85,7 +76,7 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
 
     setState(() {
       _filteredQuestions = tempQuestions;
-      _currentPage = 0; // Reset về trang đầu tiên mỗi khi có bộ lọc mới
+      _currentPage = 0;
     });
   }
 
@@ -100,8 +91,6 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
     if (_isLoading) {
       return Scaffold(appBar: AppBar(title: const Text("Manage Questions")), body: const Center(child: CircularProgressIndicator()));
     }
-
-    // Tính toán cho phân trang
     final totalItems = _filteredQuestions.length;
     final totalPages = (totalItems / _itemsPerPage).ceil();
     final startIndex = _currentPage * _itemsPerPage;
@@ -112,12 +101,10 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
       appBar: AppBar(title: const Text("Manage Questions")),
       body: Column(
         children: [
-          // KHU VỰC LỌC VÀ TÌM KIẾM
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
               children: [
-                // Ô tìm kiếm
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
@@ -127,7 +114,6 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Các chip để lọc
                 Wrap(
                   spacing: 8.0,
                   children: _categories.map((cat) {
@@ -147,7 +133,6 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
             ),
           ),
 
-          // DANH SÁCH CÂU HỎI (ĐÃ PHÂN TRANG)
           Expanded(
             child: ListView.builder(
               itemCount: pageItems.length,
@@ -169,7 +154,6 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
             ),
           ),
 
-          // KHU VỰC ĐIỀU KHIỂN PHÂN TRANG
           if (totalPages > 1)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),

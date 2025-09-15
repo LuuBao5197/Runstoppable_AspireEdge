@@ -8,7 +8,6 @@ class QuizSurveyResultScreen extends StatelessWidget {
 
   const QuizSurveyResultScreen({super.key, required this.careerTypes});
 
-  /// Helper function to get display details (icon, color, description) for each career type.
   Map<String, dynamic> _getCareerTypeDetails(CareerType type) {
     switch (type) {
       case CareerType.Realistic:
