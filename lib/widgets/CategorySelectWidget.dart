@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:trackmentalhealth/widgets/ProfessionalWidget.dart';
 import 'package:trackmentalhealth/widgets/StudentWidget.dart';
 import 'GraduateScreenWidget.dart';
-// Enum để quản lý các lựa chọn một cách an toàn
-enum UserCategory { student, graduate, professional }
 
+enum UserCategory { student, graduate, professional }
 class CategorySelectionScreen extends StatelessWidget {
   const CategorySelectionScreen({super.key});
 
-  // Hàm xử lý khi một category được chọn
   void _onCategorySelected(BuildContext context, UserCategory category) {
-    // In ra để kiểm tra
-    print('Selected category: ${category.name}');
+
     if(category == UserCategory.student){
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => StudentScreen()),
@@ -25,13 +22,7 @@ class CategorySelectionScreen extends StatelessWidget {
         MaterialPageRoute(builder: (_) => ProfessionalScreen()),
       );
     }
-
-    // Hiển thị một thông báo tạm thời
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('You selected: ${category.name}')),
-    );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,7 +49,6 @@ class CategorySelectionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              // Widget thẻ cho Student
               _CategoryCard(
                 icon: Icons.school_outlined,
                 title: "Student",
@@ -68,7 +58,6 @@ class CategorySelectionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Widget thẻ cho Graduate
               _CategoryCard(
                 icon: Icons.auto_stories_outlined,
                 title: "Graduate",
@@ -78,7 +67,6 @@ class CategorySelectionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Widget thẻ cho Professional
               _CategoryCard(
                 icon: Icons.work_outline_rounded,
                 title: "Professional",

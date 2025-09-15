@@ -11,13 +11,12 @@ class QuizLikertResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Xử lý logic để tìm ra 2 nhóm cao nhất và lấy dữ liệu tương ứng
+    // Handle logic get 2 group with highest scores
     final sortedScores = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final topTwoGroups = sortedScores.take(2).toList();
 
-    // Tạo danh sách kết quả để truyền vào ListView.builder
     final List<Map<String, dynamic>> results = [
       careerProfileData[topTwoGroups[0].key]!,
       careerProfileData[topTwoGroups[1].key]!,
@@ -26,7 +25,7 @@ class QuizLikertResultScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Your Career Profile"),
-        automaticallyImplyLeading: false, // Ẩn nút back
+        automaticallyImplyLeading: false,
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(8.0),
@@ -58,7 +57,6 @@ class QuizLikertResultScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
-                  // Liệt kê các nghề nghiệp
                   ...careers.map((career) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(Icons.work_outline, color: Theme.of(context).primaryColor),
@@ -80,7 +78,6 @@ class QuizLikertResultScreen extends StatelessWidget {
           ),
           child: const Text("Take the Quiz Again"),
           onPressed: () {
-            // Thay thế màn hình kết quả hiện tại bằng một màn hình Quiz mới
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const QuizScreenLiker()),

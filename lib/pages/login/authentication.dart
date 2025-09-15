@@ -34,36 +34,10 @@ class AuthServices {
     } catch (e, stack) {
       print("SignUp Error: $e");
       print(stack);
-      res = 'Lỗi không xác định: $e';
+      res = 'Error during sign up: $e';
     }
     return res;
   }
-
-  // Future<String> signUpDriver({required String name, required String email, required String password, required String phone, required String address}) async{
-  //   String res = 'Something went wrong';
-  //   try{
-  //     if(name.isNotEmpty || email.isNotEmpty || password.isNotEmpty || phone.isNotEmpty){
-  //       UserCredential credential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-  //       await _firestore.collection('driver').doc(credential.user!.uid).set({
-  //         'name': name,
-  //         'email': email,
-  //         'phone': phone,
-  //         'address': address,
-  //         'image': '',
-  //         'role': 'driver',
-  //         'enable': 0,
-  //         'status': 0,
-  //         'online': false,
-  //         'fcm_token': "",
-  //         'uid': credential.user!.uid,
-  //       });
-  //       res = 'Successfully';
-  //     }
-  //   } catch (e) {
-  //     res = e.toString();
-  //   }
-  //   return res;
-  // }
 
   Future<dynamic> loginUser({required String email, required String password}) async{
     try{

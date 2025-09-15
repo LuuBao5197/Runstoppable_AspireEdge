@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:trackmentalhealth/main.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 
@@ -164,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Upload ảnh thất bại. Vui lòng thử lại.")),
+          const SnackBar(content: Text("Upload failded")),
         );
       }
     }
@@ -181,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: const Text("Chụp ảnh"),
+              title: const Text("Take a photo"),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -189,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text("Chọn từ thư viện"),
+              title: const Text("Choice from gallery"),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);

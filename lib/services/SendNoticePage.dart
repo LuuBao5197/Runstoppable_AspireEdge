@@ -54,14 +54,12 @@ class _SendNoticePageState extends State<SendNoticePage> {
       SendNoticeDTO notice;
 
       if (_selectedUserId == null) {
-        // Gửi cho tất cả user, không lưu userId
         notice = SendNoticeDTO(
           title: title,
           message: message,
-          userId: "ALL", // bỏ userId
+          userId: "ALL",
         );
       } else {
-        // Gửi cho user đã chọn
         notice = SendNoticeDTO(
           title: title,
           message: message,

@@ -21,8 +21,8 @@ class _CareerDashboardScreenState extends State<CareerDashboardScreen> {
   Future<List<QueryDocumentSnapshot>> _loadSuggestions() async {
     final snapshot = await FirebaseFirestore.instance.collection('career_suggestions').get();
     final docs = snapshot.docs;
-    docs.shuffle(); // Xáo trộn để mỗi lần vào lại thấy khác
-    return docs.take(6).toList(); // Chỉ lấy 3 nhóm để hiển thị
+    docs.shuffle();
+    return docs.take(5).toList();
   }
 
   @override
@@ -75,7 +75,6 @@ class _CareerDashboardScreenState extends State<CareerDashboardScreen> {
   }
 }
 
-// Widget thẻ con để hiển thị thông tin nghề nghiệp, có thể tách ra file riêng
 class CareerSuggestionCard extends StatelessWidget {
   final Map<String, dynamic> data;
   const CareerSuggestionCard({super.key, required this.data});
@@ -106,7 +105,7 @@ class CareerSuggestionCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              ...careers.take(2).map((career) => ListTile( // Chỉ hiển thị 2 ví dụ
+              ...careers.take(3).map((career) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.work_outline, color: Theme.of(context).colorScheme.secondary),
                 title: Text(career['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),

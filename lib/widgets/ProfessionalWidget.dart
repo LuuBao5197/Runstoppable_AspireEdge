@@ -8,12 +8,14 @@ import 'package:trackmentalhealth/pages/ContactUsPage.dart';
 import 'package:trackmentalhealth/widgets/CategorySelectWidget.dart';
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
+import '../pages/CareerBank/career_guidance_page.dart';
 import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
 import '../pages/Quizzes/QuestionListScreen.dart';
 import '../pages/Resource/User/WishlistScreen.dart';
 import '../pages/Resource/resource_main.dart';
+import '../pages/TestimonialsCarousel.dart';
 import '../pages/login/LoginPage.dart';
 import '../pages/profile/ProfileScreen.dart';
 
@@ -31,13 +33,13 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
   bool _loadingProfile = true;
   bool hasNewNotification = false;
   final List<Widget> _screens = [
-    const NotificationScreen(),
+    const TestimonialsCarousel(),
     const ResourceMain(),
     const CareerBankPage(),
-    const CareerDashboardScreen(),
+    const CareerGuidancePage(),
     const ContactUsPage(),
-    const CategorySelectionScreen()
-    // const QuestionListScreen()
+    const CareerDashboardScreen(),
+    const NotificationScreen(),
   ];
 
   @override
@@ -113,12 +115,11 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
                   NavigationRailDestination(
-                    icon: Icon(Icons.notifications_active),
-                    label: Text("Notice"),
-
+                    icon: Icon(Icons.highlight_alt),
+                    label: Text("Spotlight"),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.quiz),
+                    icon: Icon(Icons.mediation),
                     label: Text("Resource"),
                   ),
                   NavigationRailDestination(
@@ -136,8 +137,13 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
 
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
-                    label: Text("View Mode"),
+                    label: Text("Quiz"),
                   ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.notifications_active),
+                    label: Text("Notice"),
+                  ),
+
                 ],
               ),
             ),
@@ -163,8 +169,8 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
         elevation: 10,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_active),
-            label: 'Notice',
+            icon: Icon(Icons.highlight_alt),
+            label: 'Spotlight',
           ),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
@@ -185,7 +191,11 @@ class _ProfessionalScreenState extends State<ProfessionalScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.quiz_rounded),
-            label: 'View Mode',
+            label: 'Quiz',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_active),
+            label: 'Notice',
           ),
 
 

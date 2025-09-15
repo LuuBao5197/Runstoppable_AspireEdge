@@ -33,7 +33,6 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isRegistering = true);
 
     try {
-      // Tạo user mới trong Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -41,10 +40,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
       final user = userCredential.user;
       if (user != null) {
-        // Cập nhật displayName
         await user.updateDisplayName(_nameController.text.trim());
 
-        // Thêm user vào Firestore collection "account"
         await FirebaseFirestore.instance.collection("account").doc(user.uid).set({
           "uid": user.uid,
           "name": _nameController.text.trim(),
@@ -56,12 +53,10 @@ class _RegisterPageState extends State<RegisterPage> {
           "isEmailVerified": user.emailVerified, // ban đầu = false
         });
 
-        // Gửi email xác thực
         await user.sendEmailVerification();
 
         setState(() => _isRegistering = false);
 
-        // Thông báo thành công
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
