@@ -20,9 +20,7 @@ class FaceAuthResult {
 }
 
 class FaceAuthService {
-  // ⚠️ Chỉnh lại cho phù hợp:
-  // - Emulator thì dùng 10.0.2.2
-  // - Device thật thì dùng IP LAN (vd: 192.168.1.125)
+
   static const String _baseUrl = "http://10.0.2.2:8080";
 
   /// Gửi ảnh lên server Flask để verify

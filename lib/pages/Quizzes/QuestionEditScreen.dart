@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-
-// Các model đơn giản để quản lý state của form, có thêm hàm dispose để dọn dẹp
 class AnswerModel {
   TextEditingController textController = TextEditingController();
   Map<String, TextEditingController> scoreControllers = {
@@ -28,8 +26,6 @@ class OptionModel {
     textController.dispose();
   }
 }
-
-// Màn hình chính
 class QuestionEditScreen extends StatefulWidget {
   final String? questionId;
   const QuestionEditScreen({super.key, this.questionId});
@@ -59,7 +55,6 @@ class _QuestionEditScreenState extends State<QuestionEditScreen> {
     if (widget.isEditing) {
       _loadQuestionData();
     } else {
-      // Chế độ "Thêm mới", khởi tạo với 1 lựa chọn rỗng
       setState(() {
         _answers = [AnswerModel()];
         _options = [OptionModel()];
@@ -70,7 +65,6 @@ class _QuestionEditScreenState extends State<QuestionEditScreen> {
 
   @override
   void dispose() {
-    // Dọn dẹp controllers để tránh rò rỉ bộ nhớ
     _questionTextController.dispose();
     for (var answer in _answers) {
       answer.dispose();
@@ -116,8 +110,6 @@ class _QuestionEditScreenState extends State<QuestionEditScreen> {
     }
   }
 
-  // Thay thế hàm _saveQuestion hiện tại của bạn bằng hàm này
-
   Future<void> _saveQuestion() async {
     if (!_formKey.currentState!.validate()) {
       print("Form is not valid");
@@ -126,10 +118,8 @@ class _QuestionEditScreenState extends State<QuestionEditScreen> {
 
     setState(() { _isSaving = true; });
 
-    // Khai báo biến dataToSave ở đây
     Map<String, dynamic> dataToSave;
 
-    // Xây dựng đối tượng dataToSave dựa trên questionType
     if (_questionType == 'multiple-choice') {
       dataToSave = {
         'questionType': _questionType,
@@ -138,9 +128,8 @@ class _QuestionEditScreenState extends State<QuestionEditScreen> {
           'answerText': answer.textController.text,
           'scores': answer.scoreControllers.map((key, ctrl) => MapEntry(key, int.tryParse(ctrl.text) ?? 0)),
         }).toList(),
-        // Đảm bảo không gửi trường 'options' rỗng hoặc không liên quan
       };
-    } else { // ranking
+    } else {
       dataToSave = {
         'questionType': _questionType,
         'questionText': _questionTextController.text,
@@ -149,7 +138,6 @@ class _QuestionEditScreenState extends State<QuestionEditScreen> {
           'optionText': option.textController.text,
           'category': option.category,
         }).toList(),
-        // Đảm bảo không gửi trường 'answers' rỗng hoặc không liên quan
       };
     }
 
@@ -158,7 +146,6 @@ class _QuestionEditScreenState extends State<QuestionEditScreen> {
       final functionName = widget.isEditing ? 'updateQuestion' : 'addNewQuestion';
       final callable = functions.httpsCallable(functionName);
 
-      // Thêm questionId nếu là chế độ Sửa
       if (widget.isEditing) {
         dataToSave['questionId'] = widget.questionId;
       }

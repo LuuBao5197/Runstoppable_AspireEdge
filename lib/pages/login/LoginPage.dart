@@ -291,8 +291,8 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(
                     height: 180,
                     child: Center(
-                      child: Image.network(
-                        'https://res.cloudinary.com/dsj4lnlkh/image/upload/v1757834105/z7007944171130_dcd149b65da3c3d9d7c8faf990939807_kv5mg6.jpg',
+                      child: Image.asset(
+                        'assets/images/logoAspireEdge.jpg',
                         width: 500,
                         fit: BoxFit.contain,
                       ),

@@ -60,10 +60,8 @@ class _MultipleChoiceWidgetState extends State<MultipleChoiceWidget> {
             onPressed: _selectedAnswer == null
                 ? null
                 : () {
-              // === THAY ĐỔI Ở ĐÂY ===
               final scores = _selectedAnswer!['scores'] as Map<String, dynamic>;
-
-              // Gọi hàm trong QuizState để xử lý
+              
               context.read<QuizState>().answerMultipleChoice(scores);
             },
             child: Text("Submit Answer"),

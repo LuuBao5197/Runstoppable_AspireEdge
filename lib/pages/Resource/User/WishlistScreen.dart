@@ -16,7 +16,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
   final firestore = FirebaseFirestore.instance;
   final user = FirebaseAuth.instance.currentUser;
 
-  // trạng thái hiển thị các section
+  // display status of section
   bool showBlogs = true;
   bool showVideos = true;
   bool showEbooks = true;

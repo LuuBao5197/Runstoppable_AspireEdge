@@ -7,7 +7,6 @@ class FirebaseServices {
   final _firestore = FirebaseFirestore.instance;
   final googleSignIn = GoogleSignIn();
 
-  // Login bằng email & password
   Future<User?> signInWithEmail(String email, String password) async {
     final credential = await auth.signInWithEmailAndPassword(
       email: email,

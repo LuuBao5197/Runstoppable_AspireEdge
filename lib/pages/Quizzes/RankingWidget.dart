@@ -1,8 +1,8 @@
-// lib/RankingWidget.dart
+
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'QuizState.dart'; // Import QuizState
+import 'QuizState.dart';
 
 class RankingWidget extends StatefulWidget {
   final Map<String, dynamic> question;
@@ -58,8 +58,6 @@ class _RankingWidgetState extends State<RankingWidget> {
               minimumSize: Size(double.infinity, 50),
             ),
             onPressed: () {
-              // === THAY ĐỔI Ở ĐÂY ===
-              // Gửi `_options` (đã được sắp xếp) về cho QuizState
               context.read<QuizState>().answerRanking(_options);
             },
             child: Text("Submit Answer"),

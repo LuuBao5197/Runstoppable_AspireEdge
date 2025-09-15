@@ -5,14 +5,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/ContactUsPage.dart';
+import 'package:trackmentalhealth/pages/TestimonialsCarousel.dart';
 import 'package:trackmentalhealth/widgets/CategorySelectWidget.dart';
-
 import '../core/constants/theme_provider.dart';
 import '../pages/CareerBank/CareerBankPage.dart';
 import '../pages/FeedbackPage.dart';
 import '../pages/NotificationScreen.dart';
 import '../pages/Quizzes/CareerQuizDashboardScreen.dart';
-import '../pages/Quizzes/QuestionListScreen.dart';
 import '../pages/Resource/User/WishlistScreen.dart';
 import '../pages/Resource/resource_main.dart';
 import '../pages/login/LoginPage.dart';
@@ -32,12 +31,12 @@ class _GraduateScreenState extends State<GraduateScreen> {
   bool _loadingProfile = true;
   bool hasNewNotification = false;
   final List<Widget> _screens = [
-    const NotificationScreen(),
+    const TestimonialsCarousel(),
     const ResourceMain(),
     const CareerBankPage(),
     const CareerDashboardScreen(),
     const ContactUsPage(),
-    const CategorySelectionScreen(),
+    const NotificationScreen(),
   ];
 
   @override
@@ -113,8 +112,8 @@ class _GraduateScreenState extends State<GraduateScreen> {
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
                   NavigationRailDestination(
-                    icon: Icon(Icons.notifications_active),
-                    label: Text("Notice"),
+                    icon: Icon(Icons.highlight_alt),
+                    label: Text("Spotlight"),
 
                   ),
                   NavigationRailDestination(
@@ -137,7 +136,7 @@ class _GraduateScreenState extends State<GraduateScreen> {
 
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
-                    label: Text("View Mode"),
+                    label: Text("Notification"),
                   ),
                 ],
               ),
@@ -164,8 +163,8 @@ class _GraduateScreenState extends State<GraduateScreen> {
         elevation: 10,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_active),
-            label: 'Notice',
+            icon: Icon(Icons.highlight_alt),
+            label: 'Spotlight',
           ),
           BottomNavigationBarItem( // ✅ thêm Resource tab
             icon: Icon(Icons.book),
@@ -184,11 +183,9 @@ class _GraduateScreenState extends State<GraduateScreen> {
             label: 'Contact',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'View Mode',
+            icon: Icon(Icons.notifications),
+            label: 'Notification',
           ),
-
-
         ],
       ),
     );
